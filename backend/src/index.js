@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5002"], // Add any other URLs needed
+    origin: ["https://your-netlify-site-url.netlify.app", "http://localhost:5173"],
     credentials: true,
   })
 );
