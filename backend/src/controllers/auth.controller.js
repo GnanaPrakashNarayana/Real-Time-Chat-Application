@@ -42,21 +42,18 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    console.log("Login attempt for:", email);
     const user = await User.findOne({ email });
 
     if (!user) {
-      console.log("User not found");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      console.log("Password incorrect");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    console.log("Login successful for user:", user._id);
+    // Generate token but don't set a cookie
     const token = generateToken(user._id);
 
     res.status(200).json({
@@ -64,8 +61,7 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
-      token: token,
-      createdAt: user.createdAt
+      token: token // Include the token in the response
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
@@ -85,7 +81,6 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    console.log("Update profile request received");
     const { profilePic } = req.body;
     const userId = req.user._id;
 
@@ -93,10 +88,7 @@ export const updateProfile = async (req, res) => {
       return res.status(400).json({ message: "Profile pic is required" });
     }
 
-    console.log("Uploading to Cloudinary...");
     const uploadResponse = await cloudinary.uploader.upload(profilePic);
-    console.log("Cloudinary upload complete:", uploadResponse.secure_url);
-    
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profilePic: uploadResponse.secure_url },
@@ -105,7 +97,7 @@ export const updateProfile = async (req, res) => {
 
     res.status(200).json(updatedUser);
   } catch (error) {
-    console.log("Error in update profile:", error);
+    console.log("error in update profile:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -9,25 +9,15 @@ const ProfilePage = () => {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // Add size validation
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be smaller than 5MB");
-      return;
-    }
-  
+
     const reader = new FileReader();
+
     reader.readAsDataURL(file);
-  
+
     reader.onload = async () => {
       const base64Image = reader.result;
       setSelectedImg(base64Image);
-      try {
-        await updateProfile({ profilePic: base64Image });
-      } catch (error) {
-        console.error("Profile update error:", error);
-        toast.error("Failed to update profile picture. Please try again.");
-      }
+      await updateProfile({ profilePic: base64Image });
     };
   };
 

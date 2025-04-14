@@ -1,16 +1,16 @@
-// frontend/src/lib/axios.js
 import axios from "axios";
 import { getToken } from "./tokenStorage";
 
+// Create axios instance
 export const axiosInstance = axios.create({
-  baseURL: "https://real-time-chat-backend-hc48.onrender.com/api",
-  timeout: 30000,
-  withCredentials: false
+  baseURL: import.meta.env.MODE === "development" 
+    ? "http://localhost:5002/api" 
+    : "https://real-time-chat-backend-hcs8.onrender.com/api",
 });
 
+// Add request interceptor to include auth token in all requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    console.log(`Request to: ${config.baseURL}${config.url}`);
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

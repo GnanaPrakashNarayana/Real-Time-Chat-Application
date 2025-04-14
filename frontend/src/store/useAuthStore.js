@@ -16,9 +16,7 @@ const removeToken = () => {
   localStorage.removeItem('authToken');
 };
 
-const BASE_URL = import.meta.env.MODE === "development" 
-  ? "http://localhost:5002" 
-  : "https://real-time-chat-backend-hc48.onrender.com";
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5002" : "https://real-time-chat-backend-hcs8.onrender.com";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -70,31 +68,17 @@ export const useAuthStore = create((set, get) => ({
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
-      console.log("Attempting login to:", BASE_URL + "/api/auth/login");
       const res = await axiosInstance.post("/auth/login", data);
-      console.log("Login response:", res.data);
-      
-      setToken(res.data.token);
+      setToken(res.data.token); // Save token to localStorage
       const userData = { ...res.data };
-      delete userData.token;
+      delete userData.token; // Remove token from user data object
       
       set({ authUser: userData });
       toast.success("Logged in successfully");
-      
+
       get().connectSocket();
     } catch (error) {
-      console.error("Login error:", error);
-      let errorMessage = "Login failed";
-      
-      if (error.response) {
-        errorMessage = error.response.data.message || "Login failed";
-        console.error("Response error data:", error.response.data);
-      } else if (error.request) {
-        errorMessage = "Network error - please check your connection";
-        console.error("Network error:", error.request);
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.message || "Login failed");
     } finally {
       set({ isLoggingIn: false });
     }
