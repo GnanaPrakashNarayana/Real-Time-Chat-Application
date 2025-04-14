@@ -5,7 +5,7 @@ import { getToken } from "./tokenStorage";
 export const axiosInstance = axios.create({
   baseURL: import.meta.env.MODE === "development" 
     ? "http://localhost:5002/api" 
-    : "https://real-time-chat-backend-hcs8.onrender.com/api",
+    : "https://real-time-chat-backend-hc48.onrender.com/api",
 });
 
 // Add request interceptor to include auth token in all requests

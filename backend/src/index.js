@@ -20,8 +20,16 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, "http://localhost:5173"],
+    // Update to include your Netlify domain explicitly
+    origin: [
+      process.env.FRONTEND_URL, 
+      "http://localhost:5173", 
+      "https://chatterpillar.netlify.app"
+    ],
     credentials: true,
+    // Add these headers for more robust CORS support
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 
