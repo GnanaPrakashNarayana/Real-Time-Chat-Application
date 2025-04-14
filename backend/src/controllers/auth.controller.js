@@ -42,18 +42,21 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
+    console.log("Login attempt for:", email);
     const user = await User.findOne({ email });
 
     if (!user) {
+      console.log("User not found");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
+      console.log("Password incorrect");
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate token but don't set a cookie
+    console.log("Login successful for user:", user._id);
     const token = generateToken(user._id);
 
     res.status(200).json({
@@ -61,7 +64,8 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
-      token: token // Include the token in the response
+      token: token,
+      createdAt: user.createdAt
     });
   } catch (error) {
     console.log("Error in login controller", error.message);

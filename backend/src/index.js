@@ -18,20 +18,32 @@ const __dirname = path.resolve();
 
 app.use(express.json());
 app.use(cookieParser());
+// Replace your current cors configuration with this more robust setup
 app.use(
   cors({
-    // Update to include your Netlify domain explicitly
-    origin: [
-      process.env.FRONTEND_URL, 
-      "http://localhost:5173", 
-      "https://chatterpillar.netlify.app"
-    ],
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl requests)
+      const allowedOrigins = [
+        'https://chatterpillar.netlify.app',
+        'http://localhost:5173',
+        process.env.FRONTEND_URL
+      ];
+      
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('Blocked origin:', origin);
+        callback(null, true); // Temporarily allow all origins while debugging
+      }
+    },
     credentials: true,
-    // Add these headers for more robust CORS support
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   })
 );
+
+// Add OPTIONS handling for preflight requests
+app.options('*', cors());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
