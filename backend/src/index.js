@@ -8,6 +8,7 @@ import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
+import { corsMiddleware } from "./middleware/cors.middleware.js";
 
 // Load environment variables first
 dotenv.config();
@@ -15,11 +16,14 @@ dotenv.config();
 const PORT = process.env.PORT || 5002;
 const __dirname = path.resolve();
 
+// Apply custom CORS middleware first (before any other middleware)
+app.use(corsMiddleware);
+
 // Middleware setup
 app.use(express.json({ limit: '50mb' })); // Increased limit for image uploads
 app.use(cookieParser());
 
-// Enhanced CORS configuration to fix the login issues
+// Additional standard CORS middleware as fallback
 app.use(
   cors({
     origin: [
