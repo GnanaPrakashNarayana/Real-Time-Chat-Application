@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
+import jwt from "jsonwebtoken";
 
 const app = express();
 const server = http.createServer(app);
@@ -19,10 +20,29 @@ export function getReceiverSocketId(userId) {
 // used to store online users
 const userSocketMap = {}; // {userId: socketId}
 
+// Verify token middleware for socket
+const verifySocketToken = (socket, next) => {
+  const token = socket.handshake.query.token;
+  
+  if (!token) {
+    return next(new Error("Authentication error"));
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.userId;
+    next();
+  } catch (error) {
+    return next(new Error("Authentication error"));
+  }
+};
+
+io.use(verifySocketToken);
+
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
-  const userId = socket.handshake.query.userId;
+  const userId = socket.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
   // io.emit() is used to send events to all the connected clients

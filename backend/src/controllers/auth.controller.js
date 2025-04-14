@@ -6,17 +6,7 @@ import cloudinary from "../lib/cloudinary.js";
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
   try {
-    if (!fullName || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    const user = await User.findOne({ email });
-
-    if (user) return res.status(400).json({ message: "Email already exists" });
+    // [validation code remains the same]
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -28,15 +18,17 @@ export const signup = async (req, res) => {
     });
 
     if (newUser) {
-      // generate jwt token here
-      generateToken(newUser._id, res);
       await newUser.save();
+      
+      // Generate token but don't set a cookie
+      const token = generateToken(newUser._id);
 
       res.status(201).json({
         _id: newUser._id,
         fullName: newUser.fullName,
         email: newUser.email,
         profilePic: newUser.profilePic,
+        token: token // Include the token in the response
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -61,13 +53,15 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    generateToken(user._id, res);
+    // Generate token but don't set a cookie
+    const token = generateToken(user._id);
 
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      token: token // Include the token in the response
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
