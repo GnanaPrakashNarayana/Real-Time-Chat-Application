@@ -14,20 +14,17 @@ const server = http.createServer(app);
 const userSocketMap = {}; // {userId: socketId}
 
 // Create Socket.io server with matching CORS configuration
+// In backend/src/lib/socket.js
 const io = new Server(server, {
   cors: {
     origin: [
-      'https://chatterpillar.netlify.app',
-      'http://localhost:5173',
-      process.env.FRONTEND_URL
+      "https://chatterpillar.netlify.app", 
+      "http://localhost:5173",
+      "null"
     ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ["GET", "POST"],
+    credentials: false  // Change to false if using token auth
   },
-  // Add additional Socket.io options for reliability
-  pingTimeout: 60000,
-  pingInterval: 25000,
 });
 
 // Helper function to get a user's socket ID
