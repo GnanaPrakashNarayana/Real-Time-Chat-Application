@@ -15,15 +15,15 @@ const userSocketMap = {}; // {userId: socketId}
 
 // Create Socket.io server with matching CORS configuration
 // In backend/src/lib/socket.js
+// backend/src/lib/socket.js - Update Socket.io CORS configuration
 const io = new Server(server, {
   cors: {
     origin: [
       "https://chatterpillar.netlify.app", 
-      "http://localhost:5173",
-      "null"
+      "http://localhost:5173"
     ],
     methods: ["GET", "POST"],
-    credentials: false  // Change to false if using token auth
+    credentials: false  // Changed to false since using token auth
   },
 });
 

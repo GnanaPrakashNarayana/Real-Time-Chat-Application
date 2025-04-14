@@ -24,16 +24,14 @@ app.use(express.json({ limit: '50mb' })); // Increased limit for image uploads
 app.use(cookieParser());
 
 // Additional standard CORS middleware as fallback
-// In backend/src/index.js
 app.use(
   cors({
     origin: [
       "https://chatterpillar.netlify.app",
-      "http://localhost:5173",
-      "null"  // Allow requests from file:// protocol
+      "http://localhost:5173"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: false,  // Change to false if using token auth
+    credentials: false,  // Changed to false since you're using token auth
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
@@ -95,9 +93,4 @@ process.on('SIGTERM', () => {
     console.log('Server closed');
     process.exit(0);
   });
-});
-
-// In backend/src/index.js (before other routes)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
