@@ -16,6 +16,7 @@ const userSocketMap = {}; // {userId: socketId}
 // Create Socket.io server with matching CORS configuration
 // In backend/src/lib/socket.js
 // backend/src/lib/socket.js - Update Socket.io CORS configuration
+// backend/src/lib/socket.js - Update the Socket.io CORS
 const io = new Server(server, {
   cors: {
     origin: [
@@ -23,8 +24,10 @@ const io = new Server(server, {
       "http://localhost:5173"
     ],
     methods: ["GET", "POST"],
-    credentials: false  // Changed to false since using token auth
+    credentials: false
   },
+  // Add this to help with connection issues
+  transports: ['websocket', 'polling']
 });
 
 // Helper function to get a user's socket ID

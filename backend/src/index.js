@@ -1,45 +1,39 @@
+// backend/src/index.js - Simplified CORS setup
+
+// Load dependencies
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
-
+import { corsMiddleware } from "./middleware/cors.middleware.js";
 import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
-import { corsMiddleware } from "./middleware/cors.middleware.js";
 
-// Load environment variables first
+// Load environment variables
 dotenv.config();
 
 const PORT = process.env.PORT || 5002;
 const __dirname = path.resolve();
 
-// Apply custom CORS middleware first (before any other middleware)
+// Apply CORS middleware first (important!)
 app.use(corsMiddleware);
 
-// Middleware setup
-app.use(express.json({ limit: '50mb' })); // Increased limit for image uploads
+// Basic middleware
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
-// Additional standard CORS middleware as fallback
-app.use(
-  cors({
-    origin: [
-      "https://chatterpillar.netlify.app",
-      "http://localhost:5173"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: false,  // Changed to false since you're using token auth
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+// Only use one CORS implementation to avoid conflicts
+// DO NOT add a second cors() middleware here
 
-// Handle preflight requests explicitly
-app.options('*', cors());
+// Simple test endpoint
+app.get('/', (req, res) => {
+  res.status(200).send('Chat Backend Server is running');
+});
 
-// Health check endpoint to verify the API is running
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'API is running',
@@ -74,7 +68,6 @@ if (process.env.NODE_ENV === "production") {
 server.listen(PORT, () => {
   console.log(`Server is running on PORT: ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'Not configured'}`);
   
   // Connect to database
   connectDB().then(connected => {
@@ -83,14 +76,5 @@ server.listen(PORT, () => {
     } else {
       console.error('Failed to connect to database');
     }
-  });
-});
-
-// Handle server shutdown gracefully
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
   });
 });
