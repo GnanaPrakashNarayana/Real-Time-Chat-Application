@@ -1,7 +1,6 @@
 // frontend/src/components/ChatContainer.jsx
 // Modify the component to show typing and read status
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
