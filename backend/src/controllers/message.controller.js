@@ -76,6 +76,9 @@ export const sendMessage = async (req, res) => {
 // Add this new function to the file
 // Add this function to backend/src/controllers/message.controller.js
 
+// backend/src/controllers/message.controller.js
+// Add this function to your existing file
+
 export const markMessagesAsRead = async (req, res) => {
   try {
     const { id: senderId } = req.params;
