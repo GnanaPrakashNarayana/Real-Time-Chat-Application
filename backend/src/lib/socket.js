@@ -45,7 +45,6 @@ io.on("connection", (socket) => {
   const userId = socket.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
-  // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   socket.on("disconnect", () => {
@@ -53,6 +52,36 @@ io.on("connection", (socket) => {
     delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
+
+  // --- READ RECEIPTS FEATURE ---
+  // Listen for a read receipt event from the client.
+  // Data payload should include { messageId, readerId, senderId }
+  socket.on("message-read", (data) => {
+    console.log("Message read event received:", data);
+    // Retrieve the sender's socket to notify them
+    const senderSocketId = getReceiverSocketId(data.senderId);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("message-read-update", {
+        messageId: data.messageId,
+        readerId: data.readerId,
+      });
+    }
+    // Optionally: Update the message status in the database
+  });
+  
+  // --- TYPING INDICATOR FEATURE ---
+  // Listen for typing events from the client.
+  // Data payload should include { chatId, userId, isTyping }
+  socket.on("typing", (data) => {
+    console.log("Typing event:", data);
+    // Broadcast to all other connected sockets
+    socket.broadcast.emit("typing-indicator", {
+      chatId: data.chatId,
+      userId: data.userId,
+      isTyping: data.isTyping,
+    });
+  });
+
 });
 
 export { io, app, server };
