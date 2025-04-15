@@ -7,7 +7,34 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, sendTypingStatus } = useChatStore();
+  const typingTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (text.trim()) {
+      sendTypingStatus(true);
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to stop typing indicator after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStatus(false);
+      }, 2000);
+    } else {
+      sendTypingStatus(false);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      sendTypingStatus(false);
+    };
+  }, [text, sendTypingStatus]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];

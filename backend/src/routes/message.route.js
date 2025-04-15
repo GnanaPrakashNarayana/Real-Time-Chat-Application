@@ -9,4 +9,9 @@ router.get("/:id", protectRoute, getMessages);
 
 router.post("/send/:id", protectRoute, sendMessage);
 
+// backend/src/routes/message.route.js
+// Add this new route
+router.put("/read/:id", protectRoute, markMessagesAsRead);
+
 export default router;
+

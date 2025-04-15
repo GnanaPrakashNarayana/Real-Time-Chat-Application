@@ -37,16 +37,34 @@ const verifySocketToken = (socket, next) => {
   }
 };
 
-io.use(verifySocketToken);
-
+// backend/src/lib/socket.js
+// Modify the io.on("connection") block
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
   const userId = socket.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
-  // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+  // Add typing indicator event handlers
+  socket.on("typing", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("userTyping", {
+        senderId: userId,
+        isTyping: data.isTyping
+      });
+    }
+  });
+
+  // Add message read event handler
+  socket.on("messageRead", (data) => {
+    const receiverSocketId = getReceiverSocketId(data.senderId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messagesRead", data.receiverId);
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
