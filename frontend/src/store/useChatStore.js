@@ -12,6 +12,31 @@ export const useChatStore = create((set, get) => ({
   isTyping: false,
   typingUsers: {}, // Store typing status keyed by user ID
 
+  markMessagesAsRead: async () => {
+    const { selectedUser } = get();
+    if (!selectedUser) return;
+    
+    try {
+      await axiosInstance.put(`/messages/read/${selectedUser._id}`);
+      
+      // Also emit socket event for immediate feedback
+      const socket = useAuthStore.getState().socket;
+      socket.emit("messageRead", {
+        senderId: selectedUser._id,
+        receiverId: useAuthStore.getState().authUser._id
+      });
+      
+      // Update local messages to show as read
+      set(state => ({
+        messages: state.messages.map(msg => 
+          msg.senderId === selectedUser._id ? {...msg, read: true} : msg
+        )
+      }));
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  },
+
   getUsers: async () => {
     set({ isUsersLoading: true });
     try {
