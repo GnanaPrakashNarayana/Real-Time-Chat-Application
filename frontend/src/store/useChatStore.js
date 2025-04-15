@@ -12,28 +12,50 @@ export const useChatStore = create((set, get) => ({
   isTyping: false,
   typingUsers: {}, // Store typing status keyed by user ID
 
+  isMarkingRead: false,
+  sendRetries: {},
+
   markMessagesAsRead: async () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
     
+    // Use a debounce mechanism
+    if (get().isMarkingRead) return;
+    
     try {
-      await axiosInstance.put(`/messages/read/${selectedUser._id}`);
+      set({ isMarkingRead: true });
       
-      // Also emit socket event for immediate feedback
-      const socket = useAuthStore.getState().socket;
-      socket.emit("messageRead", {
-        senderId: selectedUser._id,
-        receiverId: useAuthStore.getState().authUser._id
-      });
-      
-      // Update local messages to show as read
+      // Update local state first for responsive UI
       set(state => ({
         messages: state.messages.map(msg => 
           msg.senderId === selectedUser._id ? {...msg, read: true} : msg
         )
       }));
+      
+      // Add timeout to reduce frequency of API calls
+      setTimeout(async () => {
+        try {
+          await axiosInstance.put(`/messages/read/${selectedUser._id}`);
+          
+          // Emit socket event only if API call succeeds
+          const socket = useAuthStore.getState().socket;
+          if (socket?.connected) {
+            socket.emit("messageRead", {
+              senderId: selectedUser._id,
+              receiverId: useAuthStore.getState().authUser._id
+            });
+          }
+        } catch (error) {
+          console.log("Error marking messages as read:", error);
+          // Don't show this error to the user - it's not critical
+        } finally {
+          set({ isMarkingRead: false });
+        }
+      }, 1000);
+      
     } catch (error) {
-      console.error("Error marking messages as read:", error);
+      console.error("Error preparing to mark messages as read:", error);
+      set({ isMarkingRead: false });
     }
   },
 
@@ -73,33 +95,50 @@ sendMessage: async (messageData) => {
     text: messageData.text,
     image: messageData.image,
     createdAt: new Date().toISOString(),
-    sending: true // Flag to show sending state
+    sending: true
   };
   
   // Add temp message to state immediately
   set({ messages: [...messages, tempMessage] });
   
-  try {
-    const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-    
-    // Replace temp message with actual message
-    set(state => ({
-      messages: state.messages.map(msg => 
-        msg._id === tempId ? res.data : msg
-      )
-    }));
-    
-    return true;
-  } catch (error) {
-    // If error, mark the message as failed
-    set(state => ({
-      messages: state.messages.map(msg => 
-        msg._id === tempId ? {...msg, sending: false, failed: true} : msg
-      )
-    }));
-    toast.error(error.response?.data?.message || "Failed to send message");
-    return false;
+  // Retry mechanism
+  let retries = 3;
+  let success = false;
+  
+  while (retries > 0 && !success) {
+    try {
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      
+      // Replace temp message with actual message
+      set(state => ({
+        messages: state.messages.map(msg => 
+          msg._id === tempId ? res.data : msg
+        )
+      }));
+      
+      success = true;
+      return true;
+    } catch (error) {
+      retries--;
+      console.log(`Error sending message. Retries left: ${retries}`, error);
+      
+      if (retries === 0) {
+        // If all retries failed, mark the message as failed
+        set(state => ({
+          messages: state.messages.map(msg => 
+            msg._id === tempId ? {...msg, sending: false, failed: true} : msg
+          )
+        }));
+        toast.error("Failed to send message. Please try again.");
+        return false;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
+  
+  return success;
 },
 
   subscribeToMessages: () => {

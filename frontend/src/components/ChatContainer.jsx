@@ -84,7 +84,29 @@ const ChatContainer = () => {
             <span className="ml-1 text-xs opacity-70">sending...</span>
           )}
           {message.failed && (
-            <span className="ml-1 text-xs text-red-500">failed to send</span>
+            <div className="flex items-center mt-1">
+              <span className="text-xs text-red-500 mr-2">Failed to send</span>
+              <button 
+                className="text-xs bg-base-300 px-2 py-1 rounded-md hover:bg-base-200"
+                onClick={() => {
+                  // Get the message content
+                  const messageToRetry = {
+                    text: message.text || "",
+                    image: message.image
+                  };
+                  
+                  // Remove the failed message
+                  set(state => ({
+                    messages: state.messages.filter(msg => msg._id !== message._id)
+                  }));
+                  
+                  // Try to send again
+                  sendMessage(messageToRetry);
+                }}
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
         <div className="chat-bubble flex flex-col">
