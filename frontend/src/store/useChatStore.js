@@ -60,15 +60,47 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
-  sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
-    try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-      set({ messages: [...messages, res.data] });
-    } catch (error) {
-      toast.error(error.response.data.message);
-    }
-  },
+  // Update the sendMessage function
+// Add this to useChatStore.js
+sendMessage: async (messageData) => {
+  const { selectedUser, messages } = get();
+  // Create a temporary message object with a temporary ID to show immediately
+  const tempId = Date.now().toString();
+  const tempMessage = {
+    _id: tempId,
+    senderId: useAuthStore.getState().authUser._id,
+    receiverId: selectedUser._id,
+    text: messageData.text,
+    image: messageData.image,
+    createdAt: new Date().toISOString(),
+    sending: true // Flag to show sending state
+  };
+  
+  // Add temp message to state immediately
+  set({ messages: [...messages, tempMessage] });
+  
+  try {
+    const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+    
+    // Replace temp message with actual message
+    set(state => ({
+      messages: state.messages.map(msg => 
+        msg._id === tempId ? res.data : msg
+      )
+    }));
+    
+    return true;
+  } catch (error) {
+    // If error, mark the message as failed
+    set(state => ({
+      messages: state.messages.map(msg => 
+        msg._id === tempId ? {...msg, sending: false, failed: true} : msg
+      )
+    }));
+    toast.error(error.response?.data?.message || "Failed to send message");
+    return false;
+  }
+},
 
   subscribeToMessages: () => {
     const { selectedUser } = get();

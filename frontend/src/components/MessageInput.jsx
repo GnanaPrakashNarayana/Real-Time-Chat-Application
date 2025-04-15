@@ -1,4 +1,3 @@
-
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
   const { sendMessage, sendTypingStatus } = useChatStore();
   const typingTimeoutRef = useRef(null);
@@ -60,19 +60,28 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+    if (isSending) return; // Prevent double-sending
+
+    setIsSending(true);
+    
+    // Store values in variables to clear inputs immediately
+    const messageText = text.trim();
+    const messageImage = imagePreview;
+    
+    // Clear form immediately for better UX
+    setText("");
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     try {
       await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
+        text: messageText,
+        image: messageImage,
       });
-
-      // Clear form
-      setText("");
-      setImagePreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -106,6 +115,7 @@ const MessageInput = () => {
             placeholder="Type a message..."
             value={text}
             onChange={(e) => setText(e.target.value)}
+            disabled={isSending}
           />
           <input
             type="file"
@@ -120,16 +130,17 @@ const MessageInput = () => {
             className={`hidden sm:flex btn btn-circle
                      ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
+            disabled={isSending}
           >
             <Image size={20} />
           </button>
         </div>
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
+          disabled={(!text.trim() && !imagePreview) || isSending}
         >
-          <Send size={22} />
+          {!isSending && <Send size={22} />}
         </button>
       </form>
     </div>

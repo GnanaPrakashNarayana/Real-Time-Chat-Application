@@ -115,33 +115,52 @@ export const useAuthStore = create((set, get) => ({
 
   connectSocket: () => {
     const { authUser } = get();
-    if (!authUser || get().socket?.connected) return;
+    if (!authUser) return;
+    
+    // If already connected, don't reconnect
+    if (get().socket?.connected) {
+      console.log("Socket already connected");
+      return;
+    }
+  
+    // Disconnect any existing socket first
+    if (get().socket) {
+      get().socket.disconnect();
+    }
   
     const token = getToken();
-    if (!token) return; // Add this check
+    if (!token) return;
   
+    console.log("Connecting to socket...");
+    
+    // Add reconnection options
     const socket = io(BASE_URL, {
       query: {
         token: token
-      }
+      },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
     
-    // Make sure we initialize the socket before setting up event listeners
+    // Set socket before adding listeners to avoid race conditions
+    set({ socket });
+    
     socket.on("connect", () => {
       console.log("Socket connected:", socket.id);
-      
-      // Set up event listeners after connection is established
-      socket.on("getOnlineUsers", (userIds) => {
-        console.log("Online users:", userIds);
-        set({ onlineUsers: userIds });
-      });
     });
     
-    socket.connect();
-    set({ socket: socket });
-  },
-  
-  disconnectSocket: () => {
-    if (get().socket?.connected) get().socket.disconnect();
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+    
+    socket.on("getOnlineUsers", (userIds) => {
+      console.log("Online users:", userIds);
+      set({ onlineUsers: userIds });
+    });
+    
+    socket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
   },
 }));
