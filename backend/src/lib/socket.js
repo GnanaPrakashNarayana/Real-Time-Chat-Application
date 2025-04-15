@@ -37,6 +37,7 @@ const verifySocketToken = (socket, next) => {
   }
 };
 
+io.use(verifySocketToken);
 // backend/src/lib/socket.js
 // Modify the io.on("connection") block
 io.on("connection", (socket) => {
@@ -49,6 +50,7 @@ io.on("connection", (socket) => {
 
   // Add typing indicator event handlers
   socket.on("typing", (data) => {
+    console.log("Typing event received:", data); // Add this line
     const receiverSocketId = getReceiverSocketId(data.receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("userTyping", {
@@ -70,6 +72,11 @@ io.on("connection", (socket) => {
     console.log("A user disconnected", socket.id);
     delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  });
+
+  socket.on("getOnlineUsers", (userIds) => {
+    console.log("Online users received:", userIds); // Add this line
+    set({ onlineUsers: userIds });
   });
 });
 

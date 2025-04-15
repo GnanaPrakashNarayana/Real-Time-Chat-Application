@@ -103,31 +103,6 @@ export const useChatStore = create((set, get) => ({
     });
   },
   
-  // Method to mark messages as read
-  markMessagesAsRead: async () => {
-    const { selectedUser } = get();
-    if (!selectedUser) return;
-    
-    try {
-      await axiosInstance.put(`/messages/read/${selectedUser._id}`);
-      
-      // Also emit socket event for immediate feedback
-      const socket = useAuthStore.getState().socket;
-      socket.emit("messageRead", {
-        senderId: selectedUser._id,
-        receiverId: useAuthStore.getState().authUser._id
-      });
-      
-      // Update local messages to show as read
-      set(state => ({
-        messages: state.messages.map(msg => 
-          msg.senderId === selectedUser._id ? {...msg, read: true} : msg
-        )
-      }));
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  },
   
   // Enhanced subscribe method
   subscribeToMessages: () => {
@@ -150,6 +125,7 @@ export const useChatStore = create((set, get) => ({
     
     // Listen for typing indicators
     socket.on("userTyping", (data) => {
+      console.log("Typing status received:", data); // Add this line
       if (data.senderId === selectedUser._id) {
         set(state => ({
           typingUsers: {
