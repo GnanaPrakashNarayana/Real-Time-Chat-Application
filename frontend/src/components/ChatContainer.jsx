@@ -10,6 +10,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck } from "lucide-react";
 
+import React, { useEffect, useRef, useState } from 'react';
+
 const ChatContainer = () => {
   const {
     messages,
