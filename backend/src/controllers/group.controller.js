@@ -5,6 +5,7 @@ import cloudinary from "../lib/cloudinary.js";
 
 import { io, getReceiverSocketId } from "../lib/socket.js";
 
+
 // Add this function to your group.controller.js file
 function getReceiverSocketIdLocal(userId) {
     // Use the same userSocketMap that the original function uses
@@ -301,20 +302,23 @@ export const reactToGroupMessage = async (req, res) => {
   
       // Check if user is a member of the group
       const group = await Group.findById(message.groupId);
-      if (!group.members.includes(userId)) {
+      if (!group || !group.members.includes(userId)) {
         return res.status(403).json({ message: "You are not a member of this group" });
       }
   
+      // Initialize reactions array if it doesn't exist
+      if (!message.reactions) {
+        message.reactions = [];
+      }
+  
       // Check if user already reacted with this emoji
-      const existingReaction = message.reactions.find(
+      const existingReactionIndex = message.reactions.findIndex(
         r => r.userId.toString() === userId.toString() && r.emoji === emoji
       );
   
-      if (existingReaction) {
-        // Remove reaction if it already exists (toggle behavior)
-        message.reactions = message.reactions.filter(
-          r => !(r.userId.toString() === userId.toString() && r.emoji === emoji)
-        );
+      if (existingReactionIndex >= 0) {
+        // Remove reaction if it already exists
+        message.reactions.splice(existingReactionIndex, 1);
       } else {
         // Add new reaction
         message.reactions.push({ emoji, userId });
@@ -323,23 +327,25 @@ export const reactToGroupMessage = async (req, res) => {
       await message.save();
   
       // Notify all group members about the reaction
-      group.members.forEach((memberId) => {
-        if (memberId.toString() !== userId.toString()) {
-          const socketId = getReceiverSocketId(memberId);
-          if (socketId) {
-            io.to(socketId).emit("groupMessageReaction", {
-              messageId: message._id,
-              groupId: group._id,
-              reaction: existingReaction ? null : { emoji, userId },
-              removed: !!existingReaction
-            });
+      if (group.members && group.members.length > 0) {
+        group.members.forEach((memberId) => {
+          if (memberId.toString() !== userId.toString()) {
+            const socketId = getReceiverSocketId(memberId);
+            if (socketId) {
+              io.to(socketId).emit("groupMessageReaction", {
+                messageId: message._id,
+                groupId: group._id,
+                reaction: existingReactionIndex >= 0 ? null : { emoji, userId },
+                removed: existingReactionIndex >= 0
+              });
+            }
           }
-        }
-      });
+        });
+      }
   
       res.status(200).json(message);
     } catch (error) {
-      console.log("Error in reactToGroupMessage controller: ", error.message);
-      res.status(500).json({ error: "Internal server error" });
+      console.log("Error in reactToGroupMessage controller:", error.message);
+      res.status(500).json({ error: "Internal server error", details: error.message });
     }
   };

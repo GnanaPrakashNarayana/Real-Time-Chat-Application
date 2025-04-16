@@ -2,13 +2,14 @@
 import express from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import {
-  addMembersToGroup,
-  createGroup,
-  getGroupMessages,
-  getGroups,
-  removeMemberFromGroup,
-  sendGroupMessage
-} from "../controllers/group.controller.js";
+    addMembersToGroup,
+    createGroup, 
+    getGroupMessages,
+    getGroups,
+    removeGroupMember,
+    sendGroupMessage,
+    reactToGroupMessage // Add this import
+  } from "../controllers/group.controller.js";
 
 const router = express.Router();
 
