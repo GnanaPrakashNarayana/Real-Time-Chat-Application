@@ -86,43 +86,59 @@ const GroupMessageInput = () => {
     if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim() && !imagePreview && !documentFile) return;
 
-    try {
-      const messageDocument = documentFile ? {
-        data: await readFileAsDataURL(documentFile.file),
-        name: documentFile.name,
-        type: documentFile.type,
-        size: documentFile.size,
-      } : null;
-      
-      await sendGroupMessage({
-        text: text.trim(),
-        image: imagePreview,
-        document: messageDocument,
-      });
+const readFileAsDataURL = (file) => {
+  if (!file) {
+    return Promise.reject(new Error("No file provided"));
+  }
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
 
-      // Clear form
-      setText("");
-      setImagePreview(null);
-      setDocumentFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (documentInputRef.current) documentInputRef.current.value = "";
-    } catch (error) {
-      console.error("Failed to send message:", error);
+const handleSendMessage = async (e) => {
+  e.preventDefault();
+  if (!text.trim() && !imagePreview && !documentFile) return;
+
+  try {
+    // Fix: Create document data with proper error handling
+    let messageDocument = null;
+    if (documentFile) {
+      try {
+        const fileData = await readFileAsDataURL(documentFile.file);
+        messageDocument = {
+          data: fileData,
+          name: documentFile.name,
+          type: documentFile.type,
+          size: documentFile.size
+        };
+      } catch (error) {
+        console.error("Error reading file:", error);
+        toast.error("Failed to process document file");
+        return;
+      }
     }
-  };
-
-  const readFileAsDataURL = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+    
+    await sendGroupMessage({
+      text: text.trim(),
+      image: imagePreview,
+      document: messageDocument,
     });
-  };
+
+    // Clear form
+    setText("");
+    setImagePreview(null);
+    setDocumentFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (documentInputRef.current) documentInputRef.current.value = "";
+  } catch (error) {
+    console.error("Failed to send message:", error);
+  }
+};
 
   // Add this to both MessageInput.jsx and GroupMessageInput.jsx
 const ALLOWED_FILE_TYPES = [

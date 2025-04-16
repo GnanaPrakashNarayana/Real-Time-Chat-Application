@@ -56,11 +56,27 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
-  // Send message to group
+// In frontend/src/store/useGroupStore.js
+
+// Add defensive coding for document handling
 sendGroupMessage: async (data) => {
   const { selectedGroup, groupMessages } = get();
+  
   try {
-    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, data);
+    // Ensure the document data is properly formatted
+    let messageData = {...data};
+    
+    // Create a safe copy of the message data to avoid reference errors
+    if (data.document) {
+      messageData.document = {
+        data: data.document.data,
+        name: data.document.name,
+        type: data.document.type,
+        size: data.document.size
+      };
+    }
+    
+    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, messageData);
     set({ groupMessages: [...groupMessages, res.data] });
     return true;
   } catch (error) {

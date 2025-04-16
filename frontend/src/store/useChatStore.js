@@ -85,28 +85,38 @@ export const useChatStore = create((set, get) => ({
   // Update the sendMessage function
 // Add this to useChatStore.js
 // frontend/src/store/useChatStore.js
+// In frontend/src/store/useChatStore.js
+// Find the sendMessage function and update the tempMessage creation:
+
 sendMessage: async (messageData) => {
   const { selectedUser, messages } = get();
   // Create a temporary message object with a temporary ID to show immediately
   const tempId = Date.now().toString();
+  
+  // Fix: Safely handle document data
+  let documentData = null;
+  if (messageData.document) {
+    documentData = {
+      name: messageData.document.name,
+      type: messageData.document.type,
+      size: messageData.document.size,
+      // Only create object URL if file exists
+      url: messageData.document.file ? URL.createObjectURL(messageData.document.file) : ''
+    };
+  }
+  
   const tempMessage = {
     _id: tempId,
     senderId: useAuthStore.getState().authUser._id,
     receiverId: selectedUser._id,
     text: messageData.text,
     image: messageData.image,
-    document: messageData.document ? {
-      name: messageData.document.name,
-      type: messageData.document.type,
-      size: messageData.document.size,
-      // Temporary URL for preview
-      url: URL.createObjectURL(messageData.document.file)
-    } : null,
+    document: documentData,
     createdAt: new Date().toISOString(),
     sending: true
   };
   
-  // Add temp message to state immediately
+  // Rest of the function as before
   set({ messages: [...messages, tempMessage] });
   
   // Retry mechanism

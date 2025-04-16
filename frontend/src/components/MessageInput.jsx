@@ -83,52 +83,75 @@ const MessageInput = () => {
     if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim() && !imagePreview && !documentFile) return;
-    if (isSending) return; // Prevent double-sending
+  // In frontend/src/components/MessageInput.jsx
+// Update the handleSendMessage function:
 
-    setIsSending(true);
-    
-    // Store values in variables to clear inputs immediately
-    const messageText = text.trim();
-    const messageImage = imagePreview;
-    const messageDocument = documentFile ? {
-      data: await readFileAsDataURL(documentFile.file),
-      name: documentFile.name,
-      type: documentFile.type,
-      size: documentFile.size,
-    } : null;
-    
-    // Clear form immediately for better UX
-    setText("");
-    setImagePreview(null);
-    setDocumentFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    if (documentInputRef.current) documentInputRef.current.value = "";
+const handleSendMessage = async (e) => {
+  e.preventDefault();
+  if (!text.trim() && !imagePreview && !documentFile) return;
+  if (isSending) return; // Prevent double-sending
 
+  setIsSending(true);
+  
+  // Store values in variables to clear inputs immediately
+  const messageText = text.trim();
+  const messageImage = imagePreview;
+  
+  // Fix: Create document data properly
+  let messageDocument = null;
+  if (documentFile) {
     try {
-      await sendMessage({
-        text: messageText,
-        image: messageImage,
-        document: messageDocument,
-      });
+      const fileData = await readFileAsDataURL(documentFile.file);
+      messageDocument = {
+        data: fileData,
+        name: documentFile.name,
+        type: documentFile.type,
+        size: documentFile.size,
+        file: documentFile.file // Ensure file is included
+      };
     } catch (error) {
-      console.error("Failed to send message:", error);
-    } finally {
+      console.error("Error reading file:", error);
+      toast.error("Failed to process document file");
       setIsSending(false);
+      return;
     }
-  };
+  }
+  
+  // Clear form immediately for better UX
+  setText("");
+  setImagePreview(null);
+  setDocumentFile(null);
+  if (fileInputRef.current) fileInputRef.current.value = "";
+  if (documentInputRef.current) documentInputRef.current.value = "";
+
+  try {
+    await sendMessage({
+      text: messageText,
+      image: messageImage,
+      document: messageDocument,
+    });
+  } catch (error) {
+    console.error("Failed to send message:", error);
+  } finally {
+    setIsSending(false);
+  }
+};
 
   // Helper function to read file as data URL
-  const readFileAsDataURL = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+  // Make sure this helper function is correctly implemented in both MessageInput.jsx and GroupMessageInput.jsx
+
+const readFileAsDataURL = (file) => {
+  if (!file) {
+    return Promise.reject(new Error("No file provided"));
+  }
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
 
   // Add this to both MessageInput.jsx and GroupMessageInput.jsx
 const ALLOWED_FILE_TYPES = [
