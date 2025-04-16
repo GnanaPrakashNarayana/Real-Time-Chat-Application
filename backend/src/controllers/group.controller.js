@@ -2,9 +2,14 @@
 import Group from "../models/group.model.js";
 import GroupMessage from "../models/groupMessage.model.js";
 import cloudinary from "../lib/cloudinary.js";
-import { io } from "../lib/socket.js";
-// backend/src/controllers/group.controller.js
-import { getReceiverSocketId, io } from "../lib/socket.js";
+
+import { io, getReceiverSocketId } from "../lib/socket.js";
+
+// Add this function to your group.controller.js file
+function getReceiverSocketIdLocal(userId) {
+    // Use the same userSocketMap that the original function uses
+    return userSocketMap[userId];
+  }
 
 export const createGroup = async (req, res) => {
   try {
