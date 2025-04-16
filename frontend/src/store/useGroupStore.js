@@ -152,14 +152,19 @@ export const useGroupStore = create((set, get) => ({
       
       // Toast notification for messages in other groups
       if (!selectedGroup || selectedGroup._id !== group._id) {
-        toast((t) => (
-          <div onClick={() => {
+        // Replace JSX toast with string-based notification
+        toast.custom((t) => {
+          const toastId = t.id;
+          // Create a styled toast without JSX
+          const element = document.createElement('div');
+          element.className = 'cursor-pointer p-3 bg-primary text-primary-content rounded';
+          element.innerHTML = `<b>${group.name}</b>: ${message.text || "Sent an image"}`;
+          element.onclick = () => {
             get().setSelectedGroup(get().groups.find(g => g._id === group._id));
-            toast.dismiss(t.id);
-          }} className="cursor-pointer">
-            <strong>{group.name}</strong>: {message.text || "Sent an image"}
-          </div>
-        ), { duration: 4000 });
+            toast.dismiss(toastId);
+          };
+          return element;
+        }, { duration: 4000 });
       }
     });
     
