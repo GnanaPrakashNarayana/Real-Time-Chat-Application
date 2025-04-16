@@ -3,6 +3,8 @@ import Group from "../models/group.model.js";
 import GroupMessage from "../models/groupMessage.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io } from "../lib/socket.js";
+// backend/src/controllers/group.controller.js
+import { getReceiverSocketId, io } from "../lib/socket.js";
 
 export const createGroup = async (req, res) => {
   try {
