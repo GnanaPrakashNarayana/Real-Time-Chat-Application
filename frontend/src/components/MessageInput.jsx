@@ -1,7 +1,8 @@
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X, Paperclip } from "lucide-react"; // Import Paperclip icon
+import { Image, Send, X, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
 import React, { useEffect, useRef, useState } from 'react';
+import { prepareDocumentForUpload } from "../lib/documentUtils";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -41,13 +42,15 @@ const MessageInput = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
+
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onload = () => {
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
@@ -64,7 +67,7 @@ const MessageInput = () => {
     }
     
     setDocumentFile({
-      file,
+      file: file,
       name: file.name,
       type: file.type,
       size: file.size,
@@ -97,24 +100,17 @@ const handleSendMessage = async (e) => {
   const messageText = text.trim();
   const messageImage = imagePreview;
   
-  // Fix: Create document data properly
+  // Use our utility function to safely prepare document data
   let messageDocument = null;
-  if (documentFile) {
-    try {
-      const fileData = await readFileAsDataURL(documentFile.file);
-      messageDocument = {
-        data: fileData,
-        name: documentFile.name,
-        type: documentFile.type,
-        size: documentFile.size,
-        file: documentFile.file // Ensure file is included
-      };
-    } catch (error) {
-      console.error("Error reading file:", error);
-      toast.error("Failed to process document file");
-      setIsSending(false);
-      return;
+  try {
+    if (documentFile) {
+      messageDocument = await prepareDocumentForUpload(documentFile);
     }
+  } catch (error) {
+    console.error("Error preparing document:", error);
+    toast.error("Failed to process document");
+    setIsSending(false);
+    return;
   }
   
   // Clear form immediately for better UX
@@ -132,6 +128,7 @@ const handleSendMessage = async (e) => {
     });
   } catch (error) {
     console.error("Failed to send message:", error);
+    toast.error("Failed to send message");
   } finally {
     setIsSending(false);
   }

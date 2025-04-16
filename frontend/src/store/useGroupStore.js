@@ -3,6 +3,7 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
+import { createSafeDocumentObject } from "../lib/documentUtils"; // Import utility
 
 export const useGroupStore = create((set, get) => ({
   groups: [],
@@ -59,27 +60,24 @@ export const useGroupStore = create((set, get) => ({
 // In frontend/src/store/useGroupStore.js
 
 // Add defensive coding for document handling
-sendGroupMessage: async (data) => {
+sendGroupMessage: async (messageData) => {
   const { selectedGroup, groupMessages } = get();
   
   try {
-    // Ensure the document data is properly formatted
-    let messageData = {...data};
+    // Create a safe copy of the message data
+    const safeMessageData = {
+      text: messageData.text,
+      image: messageData.image,
+      document: messageData.document
+    };
     
-    // Create a safe copy of the message data to avoid reference errors
-    if (data.document) {
-      messageData.document = {
-        data: data.document.data,
-        name: data.document.name,
-        type: data.document.type,
-        size: data.document.size
-      };
-    }
+    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, safeMessageData);
     
-    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, messageData);
+    // Update state with the response
     set({ groupMessages: [...groupMessages, res.data] });
     return true;
   } catch (error) {
+    console.error("Error sending group message:", error);
     toast.error(error.response?.data?.message || "Failed to send message");
     return false;
   }

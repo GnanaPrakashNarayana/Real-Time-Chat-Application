@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
 import { Image, Send, X, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
+import { prepareDocumentForUpload } from "../lib/documentUtils";
 
 
 const GroupMessageInput = () => {
@@ -50,15 +51,10 @@ const GroupMessageInput = () => {
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onload = () => {
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDocumentChange = (e) => {
@@ -72,13 +68,18 @@ const GroupMessageInput = () => {
     }
     
     setDocumentFile({
-      file,
+      file: file,
       name: file.name,
       type: file.type,
       size: file.size,
     });
     
     toast.success(`File selected: ${file.name}`);
+  };
+
+  const removeImage = () => {
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeDocument = () => {
@@ -102,43 +103,32 @@ const readFileAsDataURL = (file) => {
 
 const handleSendMessage = async (e) => {
   e.preventDefault();
-  if (!text.trim() && !imagePreview && !documentFile) return;
+    if (!text.trim() && !imagePreview && !documentFile) return;
 
-  try {
-    // Fix: Create document data with proper error handling
-    let messageDocument = null;
-    if (documentFile) {
-      try {
-        const fileData = await readFileAsDataURL(documentFile.file);
-        messageDocument = {
-          data: fileData,
-          name: documentFile.name,
-          type: documentFile.type,
-          size: documentFile.size
-        };
-      } catch (error) {
-        console.error("Error reading file:", error);
-        toast.error("Failed to process document file");
-        return;
+    try {
+      // Use our utility function to safely prepare document data
+      let messageDocument = null;
+      if (documentFile) {
+        messageDocument = await prepareDocumentForUpload(documentFile);
       }
-    }
-    
-    await sendGroupMessage({
-      text: text.trim(),
-      image: imagePreview,
-      document: messageDocument,
-    });
+      
+      await sendGroupMessage({
+        text: text.trim(),
+        image: imagePreview,
+        document: messageDocument,
+      });
 
-    // Clear form
-    setText("");
-    setImagePreview(null);
-    setDocumentFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    if (documentInputRef.current) documentInputRef.current.value = "";
-  } catch (error) {
-    console.error("Failed to send message:", error);
-  }
-};
+      // Clear form
+      setText("");
+      setImagePreview(null);
+      setDocumentFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (documentInputRef.current) documentInputRef.current.value = "";
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message");
+    }
+  };
 
   // Add this to both MessageInput.jsx and GroupMessageInput.jsx
 const ALLOWED_FILE_TYPES = [

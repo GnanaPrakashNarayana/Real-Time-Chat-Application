@@ -2,7 +2,7 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
-
+import { createSafeDocumentObject } from "../lib/documentUtils"; // Import utility
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
@@ -88,22 +88,16 @@ export const useChatStore = create((set, get) => ({
 // In frontend/src/store/useChatStore.js
 // Find the sendMessage function and update the tempMessage creation:
 
+// In frontend/src/store/useChatStore.js
+
+// Update sendMessage function
 sendMessage: async (messageData) => {
   const { selectedUser, messages } = get();
   // Create a temporary message object with a temporary ID to show immediately
   const tempId = Date.now().toString();
   
-  // Fix: Safely handle document data
-  let documentData = null;
-  if (messageData.document) {
-    documentData = {
-      name: messageData.document.name,
-      type: messageData.document.type,
-      size: messageData.document.size,
-      // Only create object URL if file exists
-      url: messageData.document.file ? URL.createObjectURL(messageData.document.file) : ''
-    };
-  }
+  // Use our utility function to create a safe document object
+  const safeDocumentObject = createSafeDocumentObject(messageData.document);
   
   const tempMessage = {
     _id: tempId,
@@ -111,13 +105,20 @@ sendMessage: async (messageData) => {
     receiverId: selectedUser._id,
     text: messageData.text,
     image: messageData.image,
-    document: documentData,
+    document: safeDocumentObject,
     createdAt: new Date().toISOString(),
     sending: true
   };
   
-  // Rest of the function as before
+  // Add temp message to state immediately
   set({ messages: [...messages, tempMessage] });
+  
+  // Create a safe copy of the message data for the API call
+  const safeMessageData = {
+    text: messageData.text,
+    image: messageData.image,
+    document: messageData.document
+  };
   
   // Retry mechanism
   let retries = 3;
@@ -125,7 +126,7 @@ sendMessage: async (messageData) => {
   
   while (retries > 0 && !success) {
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, safeMessageData);
       
       // Replace temp message with actual message
       set(state => ({
