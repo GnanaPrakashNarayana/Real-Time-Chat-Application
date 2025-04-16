@@ -1,11 +1,13 @@
 // backend/src/routes/message.route.js
 import express from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
+// backend/src/routes/message.route.js
 import { 
   getMessages, 
   getUsersForSidebar, 
   sendMessage,
-  markMessagesAsRead // Make sure this is imported
+  markMessagesAsRead,
+  reactToMessage // Add this import
 } from "../controllers/message.controller.js";
 
 const router = express.Router();

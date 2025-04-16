@@ -106,6 +106,9 @@ export const markMessagesAsRead = async (req, res) => {
 // backend/src/controllers/message.controller.js
 // Add these methods to the existing file
 
+// backend/src/controllers/message.controller.js
+// Add this function to the file
+
 export const reactToMessage = async (req, res) => {
   try {
     const { id: messageId } = req.params;
@@ -122,15 +125,18 @@ export const reactToMessage = async (req, res) => {
     }
 
     // Check if user already reacted with this emoji
-    const existingReaction = message.reactions.find(
-      r => r.userId.toString() === userId.toString() && r.emoji === emoji
-    );
+    const existingReactionIndex = message.reactions ? 
+      message.reactions.findIndex(r => 
+        r.userId.toString() === userId.toString() && r.emoji === emoji
+      ) : -1;
 
-    if (existingReaction) {
-      // Remove reaction if it already exists (toggle behavior)
-      message.reactions = message.reactions.filter(
-        r => !(r.userId.toString() === userId.toString() && r.emoji === emoji)
-      );
+    if (!message.reactions) {
+      message.reactions = [];
+    }
+
+    if (existingReactionIndex >= 0) {
+      // Remove reaction if it already exists
+      message.reactions.splice(existingReactionIndex, 1);
     } else {
       // Add new reaction
       message.reactions.push({ emoji, userId });
@@ -147,8 +153,8 @@ export const reactToMessage = async (req, res) => {
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("messageReaction", {
         messageId: message._id,
-        reaction: existingReaction ? null : { emoji, userId },
-        removed: !!existingReaction
+        reaction: existingReactionIndex >= 0 ? null : { emoji, userId },
+        removed: existingReactionIndex >= 0
       });
     }
 
