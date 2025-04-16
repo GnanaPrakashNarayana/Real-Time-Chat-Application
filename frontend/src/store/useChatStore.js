@@ -196,7 +196,6 @@ sendMessage: async (messageData) => {
     
     // Listen for typing indicators
     socket.on("userTyping", (data) => {
-      console.log("Typing status received:", data); // Add this line
       if (data.senderId === selectedUser._id) {
         set(state => ({
           typingUsers: {
@@ -217,6 +216,34 @@ sendMessage: async (messageData) => {
         }));
       }
     });
+    
+    // Listen for message reactions
+    socket.on("messageReaction", (data) => {
+      const { messageId, reaction, removed } = data;
+      
+      set(state => ({
+        messages: state.messages.map(msg => {
+          if (msg._id === messageId) {
+            // If reaction was removed
+            if (removed) {
+              return {
+                ...msg,
+                reactions: msg.reactions.filter(r => 
+                  !(r.userId === reaction.userId && r.emoji === reaction.emoji)
+                )
+              };
+            }
+            
+            // If new reaction was added
+            return {
+              ...msg,
+              reactions: [...msg.reactions, reaction]
+            };
+          }
+          return msg;
+        })
+      }));
+    });
   },
   
   unsubscribeFromMessages: () => {
@@ -224,6 +251,25 @@ sendMessage: async (messageData) => {
     socket.off("newMessage");
     socket.off("userTyping");
     socket.off("messagesRead");
+    socket.off("messageReaction");
+  },
+
+  reactToMessage: async (messageId, emoji) => {
+    try {
+      const res = await axiosInstance.post(`/messages/react/${messageId}`, { emoji });
+      
+      // Update message in state
+      set(state => ({
+        messages: state.messages.map(msg => 
+          msg._id === messageId ? res.data : msg
+        )
+      }));
+      
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to react to message");
+      return false;
+    }
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),

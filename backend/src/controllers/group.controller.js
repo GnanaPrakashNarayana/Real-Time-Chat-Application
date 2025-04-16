@@ -280,3 +280,66 @@ export const removeMemberFromGroup = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// backend/src/controllers/group.controller.js
+// Add this method to the existing file
+
+export const reactToGroupMessage = async (req, res) => {
+    try {
+      const { id: messageId } = req.params;
+      const { emoji } = req.body;
+      const userId = req.user._id;
+  
+      if (!emoji) {
+        return res.status(400).json({ message: "Emoji is required" });
+      }
+  
+      const message = await GroupMessage.findById(messageId);
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+  
+      // Check if user is a member of the group
+      const group = await Group.findById(message.groupId);
+      if (!group.members.includes(userId)) {
+        return res.status(403).json({ message: "You are not a member of this group" });
+      }
+  
+      // Check if user already reacted with this emoji
+      const existingReaction = message.reactions.find(
+        r => r.userId.toString() === userId.toString() && r.emoji === emoji
+      );
+  
+      if (existingReaction) {
+        // Remove reaction if it already exists (toggle behavior)
+        message.reactions = message.reactions.filter(
+          r => !(r.userId.toString() === userId.toString() && r.emoji === emoji)
+        );
+      } else {
+        // Add new reaction
+        message.reactions.push({ emoji, userId });
+      }
+  
+      await message.save();
+  
+      // Notify all group members about the reaction
+      group.members.forEach((memberId) => {
+        if (memberId.toString() !== userId.toString()) {
+          const socketId = getReceiverSocketId(memberId);
+          if (socketId) {
+            io.to(socketId).emit("groupMessageReaction", {
+              messageId: message._id,
+              groupId: group._id,
+              reaction: existingReaction ? null : { emoji, userId },
+              removed: !!existingReaction
+            });
+          }
+        }
+      });
+  
+      res.status(200).json(message);
+    } catch (error) {
+      console.log("Error in reactToGroupMessage controller: ", error.message);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };

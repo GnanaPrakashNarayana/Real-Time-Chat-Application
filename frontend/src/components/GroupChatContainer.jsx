@@ -4,6 +4,7 @@ import { useGroupStore } from "../store/useGroupStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 
@@ -15,6 +16,7 @@ const GroupChatContainer = () => {
     getGroupTypingUsers,
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
+    reactToGroupMessage,
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
@@ -85,6 +87,15 @@ const GroupChatContainer = () => {
                 />
               )}
               {message.text && <p>{message.text}</p>}
+            </div>
+            
+            {/* Message Reactions */}
+            <div className="chat-footer opacity-100">
+              <MessageReactions 
+                message={message} 
+                onReact={reactToGroupMessage}
+                isGroup={true}
+              />
             </div>
             
             {/* Read by indicators for sent messages */}

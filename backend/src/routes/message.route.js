@@ -14,5 +14,6 @@ router.get("/users", protectRoute, getUsersForSidebar);
 router.get("/:id", protectRoute, getMessages);
 router.post("/send/:id", protectRoute, sendMessage);
 router.put("/read/:id", protectRoute, markMessagesAsRead);
+router.post("/react/:id", protectRoute, reactToMessage);
 
 export default router;

@@ -1,14 +1,14 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
+import { useEffect, useRef } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import MessageReactions from "./MessageReactions";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck } from "lucide-react";
-
-import React, { useEffect, useRef, useState, useMemo } from 'react';
 
 const ChatContainer = () => {
   const {
@@ -20,6 +20,7 @@ const ChatContainer = () => {
     unsubscribeFromMessages,
     markMessagesAsRead,
     typingUsers,
+    reactToMessage,
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
@@ -43,86 +44,6 @@ const ChatContainer = () => {
     }
   }, [messages, markMessagesAsRead]);
 
-  // Memoize rendered messages to avoid unnecessary re-renders
-  const renderedMessages = useMemo(() => {
-    return messages.map((message, index) => (
-      <div
-        key={message._id}
-        className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"} ${message.sending ? "opacity-70" : ""}`}
-        ref={index === messages.length - 1 ? messageEndRef : null}
-      >
-        <div className="chat-image avatar">
-          <div className="size-10 rounded-full border">
-            <img
-              src={
-                message.senderId === authUser._id
-                  ? authUser.profilePic || "/avatar.png"
-                  : selectedUser.profilePic || "/avatar.png"
-              }
-              alt="profile pic"
-            />
-          </div>
-        </div>
-        <div className="chat-header mb-1 flex items-center">
-          <time className="text-xs opacity-50 ml-1">
-            {formatMessageTime(message.createdAt)}
-          </time>
-          
-          {/* Show read status for sent messages */}
-          {message.senderId === authUser._id && !message.sending && (
-            <span className="ml-1">
-              {message.read ? (
-                <CheckCheck size={14} className="text-blue-500" />
-              ) : (
-                <Check size={14} className="text-gray-500" />
-              )}
-            </span>
-          )}
-          
-          {/* Show sending/failed indicator */}
-          {message.sending && (
-            <span className="ml-1 text-xs opacity-70">sending...</span>
-          )}
-          {message.failed && (
-            <div className="flex items-center mt-1">
-              <span className="text-xs text-red-500 mr-2">Failed to send</span>
-              <button 
-                className="text-xs bg-base-300 px-2 py-1 rounded-md hover:bg-base-200"
-                onClick={() => {
-                  // Get the message content
-                  const messageToRetry = {
-                    text: message.text || "",
-                    image: message.image
-                  };
-                  
-                  // Remove the failed message
-                  set(state => ({
-                    messages: state.messages.filter(msg => msg._id !== message._id)
-                  }));
-                  
-                  // Try to send again
-                  sendMessage(messageToRetry);
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="chat-bubble flex flex-col">
-          {message.image && (
-            <img
-              src={message.image}
-              alt="Attachment"
-              className="sm:max-w-[200px] rounded-md mb-2"
-            />
-          )}
-          {message.text && <p>{message.text}</p>}
-        </div>
-      </div>
-    ));
-  }, [messages, authUser, selectedUser]);
-
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
@@ -140,7 +61,60 @@ const ChatContainer = () => {
       <ChatHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {renderedMessages}
+        {messages.map((message, index) => (
+          <div
+            key={message._id}
+            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+            ref={index === messages.length - 1 ? messageEndRef : null}
+          >
+            <div className="chat-image avatar">
+              <div className="size-10 rounded-full border">
+                <img
+                  src={
+                    message.senderId === authUser._id
+                      ? authUser.profilePic || "/avatar.png"
+                      : selectedUser.profilePic || "/avatar.png"
+                  }
+                  alt="profile pic"
+                />
+              </div>
+            </div>
+            <div className="chat-header mb-1 flex items-center">
+              <time className="text-xs opacity-50 ml-1">
+                {formatMessageTime(message.createdAt)}
+              </time>
+              
+              {/* Show read status for sent messages */}
+              {message.senderId === authUser._id && (
+                <span className="ml-1">
+                  {message.read ? (
+                    <CheckCheck size={14} className="text-blue-500" />
+                  ) : (
+                    <Check size={14} className="text-gray-500" />
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="chat-bubble flex flex-col">
+              {message.image && (
+                <img
+                  src={message.image}
+                  alt="Attachment"
+                  className="sm:max-w-[200px] rounded-md mb-2"
+                />
+              )}
+              {message.text && <p>{message.text}</p>}
+            </div>
+            
+            {/* Message Reactions */}
+            <div className="chat-footer opacity-100">
+              <MessageReactions 
+                message={message} 
+                onReact={reactToMessage}
+              />
+            </div>
+          </div>
+        ))}
         
         {/* Typing indicator */}
         {isTyping && (

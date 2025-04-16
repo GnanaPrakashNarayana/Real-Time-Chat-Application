@@ -220,6 +220,39 @@ export const useGroupStore = create((set, get) => ({
         }
       }));
     });
+
+    socket.on("groupMessageReaction", (data) => {
+      const { messageId, groupId, reaction, removed } = data;
+      const { selectedGroup, groupMessages } = get();
+      
+      // Only update if this is the currently selected group
+      if (selectedGroup && selectedGroup._id === groupId) {
+        set({
+          groupMessages: groupMessages.map(msg => {
+            if (msg._id === messageId) {
+              // If reaction was removed
+              if (removed) {
+                return {
+                  ...msg,
+                  reactions: msg.reactions.filter(r => 
+                    !(r.userId === reaction.userId && r.emoji === reaction.emoji)
+                  )
+                };
+              }
+              
+              // If new reaction was added
+              return {
+                ...msg,
+                reactions: [...msg.reactions, reaction]
+              };
+            }
+            return msg;
+          })
+        });
+      }
+    });
+
+    
   },
   
   // Unsubscribe from group events
@@ -233,7 +266,9 @@ export const useGroupStore = create((set, get) => ({
     socket.off("removedFromGroup");
     socket.off("addedToGroup");
     socket.off("typingInGroup");
+    socket.off("groupMessageReaction");
   },
+
   
   // Send typing status in group
   sendGroupTypingStatus: (isTyping) => {
@@ -256,5 +291,23 @@ export const useGroupStore = create((set, get) => ({
     return Object.entries(groupTyping)
       .filter(([_, isTyping]) => isTyping)
       .map(([userId]) => userId);
-  }
+  },
+
+  reactToGroupMessage: async (messageId, emoji) => {
+    try {
+      const res = await axiosInstance.post(`/groups/messages/react/${messageId}`, { emoji });
+      
+      // Update message in state
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => 
+          msg._id === messageId ? res.data : msg
+        )
+      }));
+      
+      return true;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to react to message");
+      return false;
+    }
+  },
 }));

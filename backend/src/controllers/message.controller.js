@@ -102,3 +102,59 @@ export const markMessagesAsRead = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// backend/src/controllers/message.controller.js
+// Add these methods to the existing file
+
+export const reactToMessage = async (req, res) => {
+  try {
+    const { id: messageId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user._id;
+
+    if (!emoji) {
+      return res.status(400).json({ message: "Emoji is required" });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Check if user already reacted with this emoji
+    const existingReaction = message.reactions.find(
+      r => r.userId.toString() === userId.toString() && r.emoji === emoji
+    );
+
+    if (existingReaction) {
+      // Remove reaction if it already exists (toggle behavior)
+      message.reactions = message.reactions.filter(
+        r => !(r.userId.toString() === userId.toString() && r.emoji === emoji)
+      );
+    } else {
+      // Add new reaction
+      message.reactions.push({ emoji, userId });
+    }
+
+    await message.save();
+
+    // Notify the other user about the reaction
+    const otherUserId = message.senderId.toString() === userId.toString() 
+      ? message.receiverId 
+      : message.senderId;
+    
+    const receiverSocketId = getReceiverSocketId(otherUserId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageReaction", {
+        messageId: message._id,
+        reaction: existingReaction ? null : { emoji, userId },
+        removed: !!existingReaction
+      });
+    }
+
+    res.status(200).json(message);
+  } catch (error) {
+    console.log("Error in reactToMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

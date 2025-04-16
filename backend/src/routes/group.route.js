@@ -18,5 +18,6 @@ router.get("/messages/:id", protectRoute, getGroupMessages);
 router.post("/messages/:id", protectRoute, sendGroupMessage);
 router.post("/members", protectRoute, addMembersToGroup);
 router.delete("/:groupId/members/:memberId", protectRoute, removeMemberFromGroup);
+router.post("/messages/react/:id", protectRoute, reactToGroupMessage);
 
 export default router;
