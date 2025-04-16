@@ -6,6 +6,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { io, getReceiverSocketId } from "../lib/socket.js";
 
 
+
 // Add this function to your group.controller.js file
 function getReceiverSocketIdLocal(userId) {
     // Use the same userSocketMap that the original function uses
@@ -346,6 +347,81 @@ export const reactToGroupMessage = async (req, res) => {
       res.status(200).json(message);
     } catch (error) {
       console.log("Error in reactToGroupMessage controller:", error.message);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    }
+  };
+
+  export const removeGroupMember = async (req, res) => {
+    try {
+      const { groupId, memberId } = req.params;
+      const userId = req.user._id;
+  
+      // Check if user is admin of the group or removing self (leaving group)
+      const group = await Group.findById(groupId);
+      
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+      
+      const isAdmin = group.admin.toString() === userId.toString();
+      const isSelf = memberId === userId.toString();
+      
+      if (!isAdmin && !isSelf) {
+        return res.status(403).json({ message: "You don't have permission to remove members" });
+      }
+      
+      // Admin can't be removed unless they're removing themselves
+      if (memberId === group.admin.toString() && !isSelf) {
+        return res.status(400).json({ message: "Cannot remove group admin" });
+      }
+  
+      // Remove member
+      group.members = group.members.filter(
+        (id) => id.toString() !== memberId
+      );
+      
+      // If admin is leaving, assign new admin if members exist
+      if (isSelf && isAdmin && group.members.length > 0) {
+        group.admin = group.members[0];
+      }
+      
+      // If no members left, delete the group
+      if (group.members.length === 0) {
+        await Group.findByIdAndDelete(groupId);
+        return res.status(200).json({ message: "Group deleted as no members remain" });
+      }
+      
+      await group.save();
+  
+      // Get updated group
+      const updatedGroup = await Group.findById(groupId)
+        .populate("members", "fullName email profilePic")
+        .populate("admin", "fullName email profilePic");
+  
+      // Notify removed member
+      const removedSocketId = getReceiverSocketId(memberId);
+      if (removedSocketId) {
+        io.to(removedSocketId).emit("removedFromGroup", { 
+          groupId, 
+          message: isSelf ? "You left the group" : "You were removed from the group" 
+        });
+      }
+  
+      // Notify remaining members
+      if (group.members && group.members.length > 0) {
+        group.members.forEach((memberId) => {
+          if (memberId.toString() !== userId.toString()) {
+            const socketId = getReceiverSocketId(memberId);
+            if (socketId) {
+              io.to(socketId).emit("groupUpdated", updatedGroup);
+            }
+          }
+        });
+      }
+  
+      res.status(200).json(updatedGroup);
+    } catch (error) {
+      console.log("Error in removeGroupMember controller: ", error.message);
       res.status(500).json({ error: "Internal server error", details: error.message });
     }
   };
