@@ -1,14 +1,13 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef } from "react";
-
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, FileText, Download } from "lucide-react";
 
 const ChatContainer = () => {
   const {
@@ -103,6 +102,29 @@ const ChatContainer = () => {
                   className="sm:max-w-[200px] rounded-md mb-2"
                 />
               )}
+              
+              {/* Document display */}
+              {message.document && (
+                <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg mb-2">
+                  <FileText className="size-5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{message.document.name}</p>
+                    <p className="text-xs opacity-70">
+                      {(message.document.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                  <a 
+                    href={message.document.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    download={message.document.name}
+                    className="btn btn-circle btn-xs"
+                  >
+                    <Download className="size-3" />
+                  </a>
+                </div>
+              )}
+              
               {message.text && <p>{message.text}</p>}
             </div>
             
@@ -116,24 +138,7 @@ const ChatContainer = () => {
           </div>
         ))}
         
-        {/* Typing indicator */}
-        {isTyping && (
-          <div className="chat chat-start">
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={selectedUser.profilePic || "/avatar.png"}
-                  alt="profile pic"
-                />
-              </div>
-            </div>
-            <div className="chat-bubble chat-bubble-primary bg-opacity-50 flex gap-1">
-              <span className="typing-dot"></span>
-              <span className="typing-dot"></span>
-              <span className="typing-dot"></span>
-            </div>
-          </div>
-        )}
+        {/* ... existing code for typing indicator */}
         
         <div ref={messageEndRef} />
       </div>

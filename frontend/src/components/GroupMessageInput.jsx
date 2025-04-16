@@ -1,13 +1,15 @@
-// frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Send, X, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
+
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
+  const [documentFile, setDocumentFile] = useState(null);
   const fileInputRef = useRef(null);
+  const documentInputRef = useRef(null);
   const { sendGroupMessage, sendGroupTypingStatus } = useGroupStore();
   const typingTimeoutRef = useRef(null);
 
@@ -59,24 +61,86 @@ const GroupMessageInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleDocumentChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+    
+    setDocumentFile({
+      file,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+    
+    toast.success(`File selected: ${file.name}`);
+  };
+
+  const removeDocument = () => {
+    setDocumentFile(null);
+    if (documentInputRef.current) documentInputRef.current.value = "";
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!text.trim() && !imagePreview) return;
+    if (!text.trim() && !imagePreview && !documentFile) return;
 
     try {
+      const messageDocument = documentFile ? {
+        data: await readFileAsDataURL(documentFile.file),
+        name: documentFile.name,
+        type: documentFile.type,
+        size: documentFile.size,
+      } : null;
+      
       await sendGroupMessage({
         text: text.trim(),
         image: imagePreview,
+        document: messageDocument,
       });
 
       // Clear form
       setText("");
       setImagePreview(null);
+      setDocumentFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (documentInputRef.current) documentInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
     }
   };
+
+  const readFileAsDataURL = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Add this to both MessageInput.jsx and GroupMessageInput.jsx
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain'
+];
+
+// In handleDocumentChange function
+if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+  toast.error("File type not supported. Please upload a PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, or TXT file.");
+  return;
+}
 
   return (
     <div className="p-4 w-full">
@@ -100,6 +164,23 @@ const GroupMessageInput = () => {
         </div>
       )}
 
+      {documentFile && (
+        <div className="mb-3 flex items-center gap-2 p-2 bg-base-200 rounded-lg">
+          <div className="flex-1 flex items-center gap-2">
+            <Paperclip className="size-4" />
+            <span className="text-sm truncate">{documentFile.name}</span>
+          </div>
+          <button
+            onClick={removeDocument}
+            className="w-5 h-5 rounded-full bg-base-300
+            flex items-center justify-center"
+            type="button"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex gap-2">
           <input
@@ -116,20 +197,33 @@ const GroupMessageInput = () => {
             ref={fileInputRef}
             onChange={handleImageChange}
           />
+          <input
+            type="file"
+            className="hidden"
+            ref={documentInputRef}
+            onChange={handleDocumentChange}
+          />
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className="hidden sm:flex btn btn-circle"
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
+          </button>
+          
+          <button
+            type="button"
+            className="hidden sm:flex btn btn-circle"
+            onClick={() => documentInputRef.current?.click()}
+          >
+            <Paperclip size={20} />
           </button>
         </div>
         <button
           type="submit"
           className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          disabled={!text.trim() && !imagePreview && !documentFile}
         >
           <Send size={22} />
         </button>

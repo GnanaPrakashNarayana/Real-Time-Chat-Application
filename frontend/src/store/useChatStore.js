@@ -84,6 +84,7 @@ export const useChatStore = create((set, get) => ({
   },
   // Update the sendMessage function
 // Add this to useChatStore.js
+// frontend/src/store/useChatStore.js
 sendMessage: async (messageData) => {
   const { selectedUser, messages } = get();
   // Create a temporary message object with a temporary ID to show immediately
@@ -94,6 +95,13 @@ sendMessage: async (messageData) => {
     receiverId: selectedUser._id,
     text: messageData.text,
     image: messageData.image,
+    document: messageData.document ? {
+      name: messageData.document.name,
+      type: messageData.document.type,
+      size: messageData.document.size,
+      // Temporary URL for preview
+      url: URL.createObjectURL(messageData.document.file)
+    } : null,
     createdAt: new Date().toISOString(),
     sending: true
   };

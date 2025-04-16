@@ -57,17 +57,17 @@ export const useGroupStore = create((set, get) => ({
   },
   
   // Send message to group
-  sendGroupMessage: async (data) => {
-    const { selectedGroup, groupMessages } = get();
-    try {
-      const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, data);
-      set({ groupMessages: [...groupMessages, res.data] });
-      return true;
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send message");
-      return false;
-    }
-  },
+sendGroupMessage: async (data) => {
+  const { selectedGroup, groupMessages } = get();
+  try {
+    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, data);
+    set({ groupMessages: [...groupMessages, res.data] });
+    return true;
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Failed to send message");
+    return false;
+  }
+},
   
   // Add members to a group
   addGroupMembers: async (groupId, memberIds) => {
