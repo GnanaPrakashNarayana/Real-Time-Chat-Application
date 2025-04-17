@@ -45,6 +45,12 @@ export const createPoll = async (req, res) => {
       .populate("creator", "fullName profilePic")
       .populate("options.votes", "fullName profilePic");
 
+    // Make sure the options array is properly formatted
+    populatedPoll.options = populatedPoll.options.map(option => ({
+      ...option.toObject(),
+      votes: option.votes || []
+    }));
+
     // Populate the message with sender and poll information
     const populatedMessage = await GroupMessage.findById(pollMessage._id)
       .populate("senderId", "fullName profilePic")
@@ -130,6 +136,12 @@ export const votePoll = async (req, res) => {
       .populate("creator", "fullName profilePic")
       .populate("options.votes", "fullName profilePic");
 
+    // Make sure the options array is properly formatted in the response
+    populatedPoll.options = populatedPoll.options.map(option => ({
+      ...option.toObject(),
+      votes: option.votes || []
+    }));
+
     // Get the group
     const group = await Group.findById(poll.groupId);
     if (!group) {
@@ -185,6 +197,12 @@ export const endPoll = async (req, res) => {
       .populate("creator", "fullName profilePic")
       .populate("options.votes", "fullName profilePic");
 
+    // Make sure the options array is properly formatted
+    populatedPoll.options = populatedPoll.options.map(option => ({
+      ...option.toObject(),
+      votes: option.votes || []
+    }));
+
     // Get the group
     const group = await Group.findById(poll.groupId);
     if (!group) {
@@ -231,7 +249,16 @@ export const getPollResults = async (req, res) => {
       return res.status(403).json({ message: "You are not a member of this group" });
     }
 
-    res.status(200).json(poll);
+    // Make sure the options array is properly formatted
+    const formattedPoll = {
+      ...poll.toObject(),
+      options: poll.options.map(option => ({
+        ...option,
+        votes: option.votes || []
+      }))
+    };
+
+    res.status(200).json(formattedPoll);
   } catch (error) {
     console.log("Error in getPollResults controller:", error.message);
     res.status(500).json({ error: "Internal server error" });

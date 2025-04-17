@@ -76,12 +76,15 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
+            // In GroupChatContainer.jsx, update the poll display section:
+
               {/* Poll display */}
               {message.poll && (
-                <div className="mb-2">
+                <div className="w-full">
                   <PollDisplay 
                     poll={message.poll}
                     messageId={message._id}
+                    key={`poll-${message.poll._id}-${JSON.stringify(message.poll.options.map(o => o.votes.length))}`}
                   />
                 </div>
               )}

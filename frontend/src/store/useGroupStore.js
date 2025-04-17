@@ -163,17 +163,30 @@ export const useGroupStore = create((set, get) => ({
   },
   
   // Vote on a poll
+ // In useGroupStore.js
+
+  // Vote on a poll
   votePoll: async (voteData) => {
     try {
       const res = await axiosInstance.post("/polls/vote", voteData);
       
       // Update the poll in the messages
       set(state => ({
-        groupMessages: state.groupMessages.map(msg => 
-          msg.poll?._id === res.data._id 
-            ? { ...msg, poll: res.data } 
-            : msg
-        )
+        groupMessages: state.groupMessages.map(msg => {
+          if (msg.poll && msg.poll._id === res.data._id) {
+            return { 
+              ...msg, 
+              poll: {
+                ...res.data,
+                options: res.data.options.map(option => ({
+                  ...option,
+                  votes: option.votes || []
+                }))
+              } 
+            };
+          }
+          return msg;
+        })
       }));
       
       return true;
