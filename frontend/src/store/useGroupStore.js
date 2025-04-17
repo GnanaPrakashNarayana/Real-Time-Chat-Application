@@ -3,7 +3,6 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
-import { createSafeDocumentObject } from "../lib/documentUtils"; // Import utility
 
 export const useGroupStore = create((set, get) => ({
   groups: [],
@@ -57,31 +56,33 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
-// In frontend/src/store/useGroupStore.js
-
-// Add defensive coding for document handling
-sendGroupMessage: async (messageData) => {
-  const { selectedGroup, groupMessages } = get();
-  
-  try {
-    // Create a safe copy of the message data
-    const safeMessageData = {
-      text: messageData.text,
-      image: messageData.image,
-      document: messageData.document
-    };
+  // Send message to group - updated to handle documents safely
+  sendGroupMessage: async (messageData) => {
+    const { selectedGroup, groupMessages } = get();
     
-    const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, safeMessageData);
-    
-    // Update state with the response
-    set({ groupMessages: [...groupMessages, res.data] });
-    return true;
-  } catch (error) {
-    console.error("Error sending group message:", error);
-    toast.error(error.response?.data?.message || "Failed to send message");
-    return false;
-  }
-},
+    try {
+      // Create a clean copy of messageData without File objects
+      const safeMessageData = {
+        text: messageData.text,
+        image: messageData.image,
+        document: messageData.document ? {
+          data: messageData.document.data,
+          name: messageData.document.name,
+          type: messageData.document.type,
+          size: messageData.document.size
+        } : null
+      };
+      
+      const res = await axiosInstance.post(`/groups/messages/${selectedGroup._id}`, safeMessageData);
+      
+      set({ groupMessages: [...groupMessages, res.data] });
+      return true;
+    } catch (error) {
+      console.error("Error sending group message:", error);
+      toast.error(error.response?.data?.message || "Failed to send message");
+      return false;
+    }
+  },
   
   // Add members to a group
   addGroupMembers: async (groupId, memberIds) => {
@@ -166,10 +167,9 @@ sendGroupMessage: async (messageData) => {
       
       // Toast notification for messages in other groups
       if (!selectedGroup || selectedGroup._id !== group._id) {
-        // Replace JSX toast with string-based notification
+        // Create a styled toast without JSX
         toast.custom((t) => {
           const toastId = t.id;
-          // Create a styled toast without JSX
           const element = document.createElement('div');
           element.className = 'cursor-pointer p-3 bg-primary text-primary-content rounded';
           element.innerHTML = `<b>${group.name}</b>: ${message.text || "Sent an image"}`;
@@ -265,8 +265,6 @@ sendGroupMessage: async (messageData) => {
         });
       }
     });
-
-    
   },
   
   // Unsubscribe from group events
@@ -282,7 +280,6 @@ sendGroupMessage: async (messageData) => {
     socket.off("typingInGroup");
     socket.off("groupMessageReaction");
   },
-
   
   // Send typing status in group
   sendGroupTypingStatus: (isTyping) => {

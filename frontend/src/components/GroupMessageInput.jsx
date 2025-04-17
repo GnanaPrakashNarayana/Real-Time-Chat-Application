@@ -1,14 +1,14 @@
+// frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
 import { Image, Send, X, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
-import { prepareDocumentForUpload } from "../lib/documentUtils";
-
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [documentFile, setDocumentFile] = useState(null);
+  const [documentName, setDocumentName] = useState(null); // Just store metadata, not file object
+  const [documentData, setDocumentData] = useState(null); // Store base64 data
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const { sendGroupMessage, sendGroupTypingStatus } = useGroupStore();
@@ -67,14 +67,24 @@ const GroupMessageInput = () => {
       return;
     }
     
-    setDocumentFile({
-      file: file,
+    // Store only the name and size - no file object
+    setDocumentName({
       name: file.name,
       type: file.type,
       size: file.size,
     });
     
-    toast.success(`File selected: ${file.name}`);
+    // Read file as data URL immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDocumentData(reader.result);
+      toast.success(`File selected: ${file.name}`);
+    };
+    reader.onerror = () => {
+      toast.error("Error reading file");
+      setDocumentName(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
@@ -83,34 +93,23 @@ const GroupMessageInput = () => {
   };
 
   const removeDocument = () => {
-    setDocumentFile(null);
+    setDocumentName(null);
+    setDocumentData(null);
     if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
-
-const readFileAsDataURL = (file) => {
-  if (!file) {
-    return Promise.reject(new Error("No file provided"));
-  }
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-};
-
-const handleSendMessage = async (e) => {
-  e.preventDefault();
-    if (!text.trim() && !imagePreview && !documentFile) return;
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!text.trim() && !imagePreview && !documentName) return;
 
     try {
-      // Use our utility function to safely prepare document data
-      let messageDocument = null;
-      if (documentFile) {
-        messageDocument = await prepareDocumentForUpload(documentFile);
-      }
+      // Create document data object without any File references
+      const messageDocument = documentName ? {
+        data: documentData,
+        name: documentName.name,
+        type: documentName.type,
+        size: documentName.size
+      } : null;
       
       await sendGroupMessage({
         text: text.trim(),
@@ -121,32 +120,15 @@ const handleSendMessage = async (e) => {
       // Clear form
       setText("");
       setImagePreview(null);
-      setDocumentFile(null);
+      setDocumentName(null);
+      setDocumentData(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (documentInputRef.current) documentInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
-      toast.error("Failed to send message");
+      toast.error("Failed to send group message");
     }
   };
-
-  // Add this to both MessageInput.jsx and GroupMessageInput.jsx
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'text/plain'
-];
-
-// In handleDocumentChange function
-if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-  toast.error("File type not supported. Please upload a PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, or TXT file.");
-  return;
-}
 
   return (
     <div className="p-4 w-full">
@@ -170,11 +152,11 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         </div>
       )}
 
-      {documentFile && (
+      {documentName && (
         <div className="mb-3 flex items-center gap-2 p-2 bg-base-200 rounded-lg">
           <div className="flex-1 flex items-center gap-2">
             <Paperclip className="size-4" />
-            <span className="text-sm truncate">{documentFile.name}</span>
+            <span className="text-sm truncate">{documentName.name}</span>
           </div>
           <button
             onClick={removeDocument}
@@ -214,6 +196,7 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
             type="button"
             className="hidden sm:flex btn btn-circle"
             onClick={() => fileInputRef.current?.click()}
+            title="Send image"
           >
             <Image size={20} />
           </button>
@@ -222,6 +205,7 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
             type="button"
             className="hidden sm:flex btn btn-circle"
             onClick={() => documentInputRef.current?.click()}
+            title="Send document"
           >
             <Paperclip size={20} />
           </button>
@@ -229,7 +213,7 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         <button
           type="submit"
           className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview && !documentFile}
+          disabled={!text.trim() && !imagePreview && !documentName}
         >
           <Send size={22} />
         </button>

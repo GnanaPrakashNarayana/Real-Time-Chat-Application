@@ -94,20 +94,20 @@ export const useChatStore = create((set, get) => ({
 // In frontend/src/store/useChatStore.js
 // Update the sendMessage function to avoid file references:
 
+// In frontend/src/store/useChatStore.js
+// Update sendMessage function:
+
 sendMessage: async (messageData) => {
   const { selectedUser, messages } = get();
   const tempId = Date.now().toString();
   
-  // Create a safe document object without any file references
+  // Create a temp document object without any File references
   let tempDocument = null;
   if (messageData.document) {
     tempDocument = {
       name: messageData.document.name || 'Document',
       type: messageData.document.type || 'application/octet-stream',
       size: messageData.document.size || 0,
-      // Don't use URL.createObjectURL which requires a file object
-      // Instead, show a placeholder or use a static icon
-      url: '#'
     };
   }
   
@@ -122,56 +122,39 @@ sendMessage: async (messageData) => {
     sending: true
   };
   
-  // Add temp message to state
   set({ messages: [...messages, tempMessage] });
   
-  // Create a clean copy of messageData for API
-  const apiMessageData = {
-    text: messageData.text,
-    image: messageData.image,
-    document: messageData.document ? {
-      data: messageData.document.data,
-      name: messageData.document.name,
-      type: messageData.document.type,
-      size: messageData.document.size
-    } : null
-  };
-  
-  // Retry mechanism
-  let retries = 3;
-  let success = false;
-  
-  while (retries > 0 && !success) {
-    try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, apiMessageData);
-      
-      // Replace temp message with actual message
-      set(state => ({
-        messages: state.messages.map(msg => 
-          msg._id === tempId ? res.data : msg
-        )
-      }));
-      
-      success = true;
-      return true;
-    } catch (error) {
-      retries--;
-      console.log(`Error sending message. Retries left: ${retries}`, error);
-      
-      if (retries === 0) {
-        set(state => ({
-          messages: state.messages.map(msg => 
-            msg._id === tempId ? {...msg, sending: false, failed: true} : msg
-          )
-        }));
-        return false;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+  try {
+    // Create a clean copy without any references to file objects
+    const apiMessageData = {
+      text: messageData.text,
+      image: messageData.image,
+      document: messageData.document ? {
+        data: messageData.document.data,
+        name: messageData.document.name,
+        type: messageData.document.type,
+        size: messageData.document.size
+      } : null
+    };
+    
+    const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, apiMessageData);
+    
+    set(state => ({
+      messages: state.messages.map(msg => 
+        msg._id === tempId ? res.data : msg
+      )
+    }));
+    
+    return true;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    set(state => ({
+      messages: state.messages.map(msg => 
+        msg._id === tempId ? {...msg, sending: false, failed: true} : msg
+      )
+    }));
+    return false;
   }
-  
-  return success;
 },
 
   subscribeToMessages: () => {

@@ -2,43 +2,19 @@ import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X, Paperclip } from "lucide-react";
 import toast from "react-hot-toast";
 import React, { useEffect, useRef, useState } from 'react';
-import { prepareDocumentForUpload } from "../lib/documentUtils";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [documentFile, setDocumentFile] = useState(null);
+  const [documentName, setDocumentName] = useState(null); // Just store name, not file object
+  const [documentData, setDocumentData] = useState(null); // Store base64 data
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const { sendMessage, sendTypingStatus } = useChatStore();
   const typingTimeoutRef = useRef(null);
 
-  useEffect(() => {
-    if (text.trim()) {
-      sendTypingStatus(true);
-      
-      // Clear previous timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      
-      // Set new timeout to stop typing indicator after 2 seconds of inactivity
-      typingTimeoutRef.current = setTimeout(() => {
-        sendTypingStatus(false);
-      }, 2000);
-    } else {
-      sendTypingStatus(false);
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      sendTypingStatus(false);
-    };
-  }, [text, sendTypingStatus]);
+  // Keep existing useEffect code for typing status
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -66,14 +42,24 @@ const MessageInput = () => {
       return;
     }
     
-    setDocumentFile({
-      file: file,
+    // Store only the name and size - no file object
+    setDocumentName({
       name: file.name,
       type: file.type,
       size: file.size,
     });
     
-    toast.success(`File selected: ${file.name}`);
+    // Read file as data URL immediately
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDocumentData(reader.result);
+      toast.success(`File selected: ${file.name}`);
+    };
+    reader.onerror = () => {
+      toast.error("Error reading file");
+      setDocumentName(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
@@ -82,113 +68,51 @@ const MessageInput = () => {
   };
 
   const removeDocument = () => {
-    setDocumentFile(null);
+    setDocumentName(null);
+    setDocumentData(null);
     if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
-  // In frontend/src/components/MessageInput.jsx
-// Update the handleSendMessage function:
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!text.trim() && !imagePreview && !documentName) return;
+    if (isSending) return;
 
-// In frontend/src/components/MessageInput.jsx
-// Replace the handleSendMessage function with this version:
-
-const handleSendMessage = async (e) => {
-  e.preventDefault();
-  if (!text.trim() && !imagePreview && !documentFile) return;
-  if (isSending) return;
-
-  setIsSending(true);
-  
-  // Store values in variables
-  const messageText = text.trim();
-  const messageImage = imagePreview;
-  
-  // Create a separate document data object - NO references to "file" directly
-  let messageDocument = null;
-  if (documentFile) {
-    try {
-      // Convert file to base64 string
-      const fileReader = new FileReader();
-      const filePromise = new Promise((resolve, reject) => {
-        fileReader.onload = () => resolve(fileReader.result);
-        fileReader.onerror = reject;
-      });
-      
-      fileReader.readAsDataURL(documentFile.file);
-      const dataUrl = await filePromise;
-      
-      messageDocument = {
-        data: dataUrl,
-        name: documentFile.name,
-        type: documentFile.type,
-        size: documentFile.size
-      };
-    } catch (error) {
-      console.error("Error processing document:", error);
-      toast.error("Failed to process file");
-      setIsSending(false);
-      return;
-    }
-  }
-  
-  // Clear form immediately
-  setText("");
-  setImagePreview(null);
-  setDocumentFile(null);
-  if (fileInputRef.current) fileInputRef.current.value = "";
-  if (documentInputRef.current) documentInputRef.current.value = "";
-
-  try {
-    const success = await sendMessage({
-      text: messageText,
-      image: messageImage,
-      document: messageDocument
-    });
+    setIsSending(true);
     
-    if (!success) {
+    // Store values in variables to clear inputs immediately
+    const messageText = text.trim();
+    const messageImage = imagePreview;
+    
+    // Create document data object without any File references
+    const messageDocument = documentName ? {
+      data: documentData,
+      name: documentName.name,
+      type: documentName.type,
+      size: documentName.size
+    } : null;
+    
+    // Clear form immediately
+    setText("");
+    setImagePreview(null);
+    setDocumentName(null);
+    setDocumentData(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (documentInputRef.current) documentInputRef.current.value = "";
+
+    try {
+      await sendMessage({
+        text: messageText,
+        image: messageImage,
+        document: messageDocument
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
       toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
-  } catch (error) {
-    console.error("Failed to send message:", error);
-    toast.error("Failed to send message");
-  } finally {
-    setIsSending(false);
-  }
-};
-
-  // Helper function to read file as data URL
-  // Make sure this helper function is correctly implemented in both MessageInput.jsx and GroupMessageInput.jsx
-
-const readFileAsDataURL = (file) => {
-  if (!file) {
-    return Promise.reject(new Error("No file provided"));
-  }
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-};
-
-  // Add this to both MessageInput.jsx and GroupMessageInput.jsx
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'text/plain'
-];
-
-// In handleDocumentChange function
-if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-  toast.error("File type not supported. Please upload a PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, or TXT file.");
-  return;
-}
+  };
 
   return (
     <div className="p-4 w-full">
@@ -212,11 +136,11 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         </div>
       )}
 
-      {documentFile && (
+      {documentName && (
         <div className="mb-3 flex items-center gap-2 p-2 bg-base-200 rounded-lg">
           <div className="flex-1 flex items-center gap-2">
             <Paperclip className="size-4" />
-            <span className="text-sm truncate">{documentFile.name}</span>
+            <span className="text-sm truncate">{documentName.name}</span>
           </div>
           <button
             onClick={removeDocument}
@@ -276,7 +200,7 @@ if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         <button
           type="submit"
           className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
-          disabled={(!text.trim() && !imagePreview && !documentFile) || isSending}
+          disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
         >
           {!isSending && <Send size={22} />}
         </button>

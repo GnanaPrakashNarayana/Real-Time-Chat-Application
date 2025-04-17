@@ -104,24 +104,33 @@ const ChatContainer = () => {
               )}
               
               {/* Document display */}
+              // In frontend/src/components/ChatContainer.jsx
+              // Modify the document display part:
+
               {message.document && (
                 <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg mb-2">
                   <FileText className="size-5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{message.document.name}</p>
+                    <p className="text-sm font-medium truncate">
+                      {message.document.name || "Document"}
+                    </p>
                     <p className="text-xs opacity-70">
-                      {(message.document.size / 1024).toFixed(2)} KB
+                      {message.document.size ? 
+                        ((message.document.size / 1024).toFixed(2) + " KB") : 
+                        "Unknown size"}
                     </p>
                   </div>
-                  <a 
-                    href={message.document.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    download={message.document.name}
-                    className="btn btn-circle btn-xs"
-                  >
-                    <Download className="size-3" />
-                  </a>
+                  {message.document.url && (
+                    <a 
+                      href={message.document.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      download={message.document.name}
+                      className="btn btn-circle btn-xs"
+                    >
+                      <Download className="size-3" />
+                    </a>
+                  )}
                 </div>
               )}
               
