@@ -89,8 +89,16 @@ export const getGroupMessages = async (req, res) => {
       return res.status(403).json({ message: "You are not a member of this group" });
     }
 
+    // Fetch messages with fully populated poll data
     const messages = await GroupMessage.find({ groupId })
       .populate("senderId", "fullName profilePic")
+      .populate({
+        path: "poll",
+        populate: [
+          { path: "creator", select: "fullName profilePic" },
+          { path: "options.votes", select: "fullName profilePic" }
+        ]
+      })
       .sort({ createdAt: 1 });
 
     // Mark messages as read by this user
@@ -104,7 +112,7 @@ export const getGroupMessages = async (req, res) => {
 
     res.status(200).json(messages);
   } catch (error) {
-    console.log("Error in getGroupMessages controller: ", error.message);
+    console.log("Error in getGroupMessages controller:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

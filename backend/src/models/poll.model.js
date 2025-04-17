@@ -45,13 +45,17 @@ const pollSchema = new mongoose.Schema(
       default: true,
     }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
 
 // Method to check if a user has voted
 pollSchema.methods.hasUserVoted = function(userId) {
   for (const option of this.options) {
-    if (option.votes.includes(userId)) {
+    if (option.votes.some(vote => vote.toString() === userId.toString())) {
       return true;
     }
   }
@@ -61,7 +65,7 @@ pollSchema.methods.hasUserVoted = function(userId) {
 // Method to get the option a user voted for
 pollSchema.methods.getUserVote = function(userId) {
   for (const option of this.options) {
-    if (option.votes.includes(userId)) {
+    if (option.votes.some(vote => vote.toString() === userId.toString())) {
       return option._id;
     }
   }
@@ -71,6 +75,37 @@ pollSchema.methods.getUserVote = function(userId) {
 // Method to get total votes
 pollSchema.methods.getTotalVotes = function() {
   return this.options.reduce((total, option) => total + option.votes.length, 0);
+};
+
+// Add pre-find hooks to always populate creator and votes
+pollSchema.pre('find', function(next) {
+  this.populate('creator', 'fullName profilePic');
+  this.populate('options.votes', 'fullName profilePic');
+  next();
+});
+
+pollSchema.pre('findOne', function(next) {
+  this.populate('creator', 'fullName profilePic');
+  this.populate('options.votes', 'fullName profilePic');
+  next();
+});
+
+// Also add a pre-hook for findById since it's commonly used
+pollSchema.pre('findById', function(next) {
+  this.populate('creator', 'fullName profilePic');
+  this.populate('options.votes', 'fullName profilePic');
+  next();
+});
+
+// Adding a custom method to ensure options are always properly formatted
+pollSchema.methods.ensureOptionsFormat = function() {
+  return {
+    ...this.toObject(),
+    options: this.options.map(option => ({
+      ...option.toObject(),
+      votes: Array.isArray(option.votes) ? option.votes : []
+    }))
+  };
 };
 
 const Poll = mongoose.model("Poll", pollSchema);

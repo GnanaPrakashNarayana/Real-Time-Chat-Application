@@ -249,14 +249,14 @@ export const getPollResults = async (req, res) => {
       return res.status(403).json({ message: "You are not a member of this group" });
     }
 
-    // Make sure the options array is properly formatted
     const formattedPoll = {
-      ...poll.toObject(),
-      options: poll.options.map(option => ({
-        ...option,
-        votes: option.votes || []
-      }))
-    };
+        ...poll.toObject(),
+        options: poll.options.map(option => ({
+          ...option,
+          votes: Array.isArray(option.votes) ? option.votes : []
+        }))
+      };
+      
 
     res.status(200).json(formattedPoll);
   } catch (error) {

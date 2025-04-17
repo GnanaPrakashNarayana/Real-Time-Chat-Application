@@ -5,6 +5,25 @@ import { useGroupStore } from "../../store/useGroupStore";
 import { BarChart3, Check, AlertTriangle, Users } from "lucide-react";
 import toast from "react-hot-toast";
 
+// In PollDisplay.jsx, add this at the beginning of the component:
+
+// Fallback if poll data is invalid
+if (!poll || !poll._id) {
+    return (
+      <div className="w-full bg-base-200/50 p-3 rounded-lg">
+        <p className="text-sm opacity-70">Poll data unavailable</p>
+      </div>
+    );
+  }
+  
+  // Ensure poll structure is valid
+  const safePoll = {
+    ...poll,
+    options: Array.isArray(poll.options) ? poll.options : [],
+    creator: poll.creator || { fullName: "Unknown" },
+    isActive: poll.isActive !== false
+  };
+
 const PollDisplay = ({ poll, messageId }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

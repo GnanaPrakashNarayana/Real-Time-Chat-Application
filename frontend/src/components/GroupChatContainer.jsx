@@ -77,16 +77,20 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
+            // In GroupChatContainer.jsx, update the message bubble rendering part:
+
               {/* Poll display */}
-              {message.poll && message.poll.options && (
+              {message.poll && (
                 <div className="w-full">
                   <PollDisplay 
                     poll={{
                       ...message.poll,
-                      options: Array.isArray(message.poll.options) ? message.poll.options : []
+                      options: Array.isArray(message.poll.options) ? message.poll.options : [],
+                      creator: message.poll.creator || { _id: "", fullName: "Unknown", profilePic: "" },
+                      isActive: message.poll.isActive !== false
                     }}
                     messageId={message._id}
-                    key={`poll-${message.poll._id}-${JSON.stringify(message.poll.options?.map?.(o => o.votes?.length) || [])}`}
+                    key={`poll-${message.poll._id}-${Date.now()}`}
                   />
                 </div>
               )}

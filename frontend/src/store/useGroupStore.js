@@ -45,13 +45,38 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
-  // Get messages for a group
+ // In useGroupStore.js, update the getGroupMessages function:
+
   getGroupMessages: async (groupId) => {
     set({ isLoadingMessages: true });
     try {
       const res = await axiosInstance.get(`/groups/messages/${groupId}`);
-      set({ groupMessages: res.data, isLoadingMessages: false });
+      
+      // Process messages to ensure poll data is properly formatted
+      const processedMessages = res.data.map(message => {
+        if (message.poll) {
+          return {
+            ...message,
+            poll: {
+              ...message.poll,
+              options: Array.isArray(message.poll.options) 
+                ? message.poll.options.map(option => ({
+                  ...option,
+                  votes: Array.isArray(option.votes) ? option.votes : []
+                }))
+                : []
+            }
+          };
+        }
+        return message;
+      });
+      
+      set({ 
+        groupMessages: processedMessages, 
+        isLoadingMessages: false 
+      });
     } catch (error) {
+      console.error("Error fetching group messages:", error);
       toast.error(error.response?.data?.message || "Failed to fetch messages");
       set({ isLoadingMessages: false });
     }
