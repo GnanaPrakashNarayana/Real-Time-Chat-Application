@@ -30,13 +30,17 @@ app.get('*', (req, res) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+// Update this section in backend/src/index.js
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, "http://localhost:5173"],
+    origin: [
+      process.env.FRONTEND_URL,
+      "http://localhost:5173",
+      "https://chatterpillar.netlify.app" // Add your Netlify domain
+    ],
     credentials: true,
   })
 );
-
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
