@@ -38,24 +38,52 @@ export const getMessages = async (req, res) => {
   }
 };
 
+// In backend/src/controllers/message.controller.js
+// In backend/src/controllers/message.controller.js
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    // Get data from request body
+    const { text, image, document } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     let imageUrl;
+    let documentData = null;
+
     if (image) {
       // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
     }
 
+    if (document) {
+      // Upload document to cloudinary
+      try {
+        const uploadResponse = await cloudinary.uploader.upload(document.data, {
+          resource_type: "auto",
+          folder: "chat_documents",
+          public_id: `${Date.now()}_${document.name}`,
+        });
+        
+        documentData = {
+          url: uploadResponse.secure_url,
+          name: document.name,
+          type: document.type,
+          size: document.size,
+        };
+      } catch (uploadError) {
+        console.error("Document upload error:", uploadError);
+        return res.status(400).json({ error: "Failed to upload document" });
+      }
+    }
+
+    // Create the message with 'text' not 'messageText'
     const newMessage = new Message({
       senderId,
       receiverId,
-      text,
+      text, // Use text from req.body, not messageText
       image: imageUrl,
+      document: documentData,
     });
 
     await newMessage.save();

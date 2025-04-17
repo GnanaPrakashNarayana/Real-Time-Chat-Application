@@ -1,31 +1,37 @@
 #!/bin/bash
-# Display current directory
-echo "Current directory: $(pwd)"
+echo "Starting build process from backend directory..."
+echo "Current location: $(pwd)"
 
-# Install dependencies for backend
+# Install backend dependencies
 echo "Installing backend dependencies..."
 npm install
 
-# Navigate to frontend directory and build
-echo "Building frontend..."
-cd frontend
+# Navigate up to root directory, then to frontend
+echo "Moving to frontend directory..."
+cd ../frontend
+
+# Install frontend dependencies and build
+echo "Installing frontend dependencies..."
 npm install
+
+echo "Building frontend..."
 npm run build
 
 # Check if build was successful
 if [ -d "dist" ]; then
   echo "Frontend build successful! Files in dist directory:"
   ls -la dist
-  echo "Content of dist directory:"
-  find dist -type f | head -n 20
 else
   echo "Frontend build failed! dist directory not found"
   exit 1
 fi
 
-# Move back to root
-cd ..
+# Create required directory structure in Render's persistent storage
+echo "Creating directory structure for frontend files..."
+mkdir -p /opt/render/project/src/frontend/dist
 
-# Run verification script
-echo "Running verification script..."
-node verify-build.js
+# Copy built files to the expected location
+echo "Copying frontend build files to expected location..."
+cp -r dist/* /opt/render/project/src/frontend/dist/
+
+echo "Build process complete!"
