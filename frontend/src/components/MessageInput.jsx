@@ -73,6 +73,9 @@ const MessageInput = () => {
     if (documentInputRef.current) documentInputRef.current.value = "";
   };
 
+  // In frontend/src/components/MessageInput.jsx
+  // Find the handleSendMessage function and update it:
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !documentName) return;
@@ -80,9 +83,8 @@ const MessageInput = () => {
 
     setIsSending(true);
     
-    // Store values in variables to clear inputs immediately
+    // Store the text value directly
     const messageText = text.trim();
-    const messageImage = imagePreview;
     
     // Create document data object without any File references
     const messageDocument = documentName ? {
@@ -102,8 +104,8 @@ const MessageInput = () => {
 
     try {
       await sendMessage({
-        text: messageText,
-        image: messageImage,
+        text: messageText,  // Use the stored text value
+        image: imagePreview,
         document: messageDocument
       });
     } catch (error) {
