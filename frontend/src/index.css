@@ -1,4 +1,9 @@
-/* Add to frontend/src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+  /* Add to frontend/src/index.css */
 @keyframes typingAnimation {
   0% { opacity: 0.3; }
   50% { opacity: 1; }
