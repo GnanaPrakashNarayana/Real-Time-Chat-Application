@@ -1,6 +1,7 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef } from "react";
+
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
@@ -94,13 +95,6 @@ const ChatContainer = () => {
                 </span>
               )}
             </div>
-            // In frontend/src/components/ChatContainer.jsx
-            // Update the message bubble rendering
-
-            // Open frontend/src/components/ChatContainer.jsx
-            // Find the section that renders the chat bubble content
-
-            // Replace this problematic section:
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img
@@ -134,7 +128,7 @@ const ChatContainer = () => {
                 </div>
               )}
               
-              {/* Message text content - removing any debug text or comments */}
+              {/* Message text content */}
               {message.text && <p>{message.text}</p>}
             </div>
             
@@ -148,7 +142,24 @@ const ChatContainer = () => {
           </div>
         ))}
         
-        {/* ... existing code for typing indicator */}
+        {/* Typing indicator */}
+        {isTyping && (
+          <div className="chat chat-start">
+            <div className="chat-image avatar">
+              <div className="size-10 rounded-full border">
+                <img
+                  src={selectedUser.profilePic || "/avatar.png"}
+                  alt="profile pic"
+                />
+              </div>
+            </div>
+            <div className="chat-bubble chat-bubble-primary bg-opacity-50 flex gap-1">
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+            </div>
+          </div>
+        )}
         
         <div ref={messageEndRef} />
       </div>
