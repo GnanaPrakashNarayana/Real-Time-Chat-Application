@@ -166,23 +166,31 @@ export const useGroupStore = create((set, get) => ({
  // In useGroupStore.js
 
   // Vote on a poll
+  // In useGroupStore.js
   votePoll: async (voteData) => {
     try {
       const res = await axiosInstance.post("/polls/vote", voteData);
       
+      // Ensure data is properly formatted before updating state
+      const safeOptions = Array.isArray(res.data?.options) 
+        ? res.data.options.map(option => ({
+            ...option,
+            votes: Array.isArray(option.votes) ? option.votes : []
+          }))
+        : [];
+      
+      const safePoll = {
+        ...res.data,
+        options: safeOptions
+      };
+      
       // Update the poll in the messages
       set(state => ({
         groupMessages: state.groupMessages.map(msg => {
-          if (msg.poll && msg.poll._id === res.data._id) {
+          if (msg.poll && msg.poll._id === safePoll._id) {
             return { 
               ...msg, 
-              poll: {
-                ...res.data,
-                options: res.data.options.map(option => ({
-                  ...option,
-                  votes: option.votes || []
-                }))
-              } 
+              poll: safePoll
             };
           }
           return msg;
@@ -266,14 +274,28 @@ export const useGroupStore = create((set, get) => ({
     });
     
     // Handle poll votes
+   // Inside subscribeToGroupMessages function
     socket.on("pollVote", (data) => {
-      const { selectedGroup, groupMessages } = get();
+      const { selectedGroup } = get();
       
       if (selectedGroup && selectedGroup._id === data.groupId) {
+        // Ensure the poll data has valid structure
+        const safeOptions = Array.isArray(data.poll?.options) 
+          ? data.poll.options.map(option => ({
+              ...option,
+              votes: Array.isArray(option.votes) ? option.votes : []
+            }))
+          : [];
+        
+        const safePoll = {
+          ...data.poll,
+          options: safeOptions
+        };
+        
         set(state => ({
           groupMessages: state.groupMessages.map(msg => 
             msg._id === data.messageId
-              ? { ...msg, poll: data.poll }
+              ? { ...msg, poll: safePoll }
               : msg
           )
         }));

@@ -8,18 +8,21 @@ import toast from "react-hot-toast";
 const PollDisplay = ({ poll, messageId }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showVoters, setShowVoters] = useState(false);
   const [expandedOption, setExpandedOption] = useState(null);
   
   const { authUser } = useAuthStore();
   const { votePoll, endPoll } = useGroupStore();
   
+  // Defensive check for poll data structure
+  const safeOptions = Array.isArray(poll.options) ? poll.options : [];
+  
   // Check if user has already voted
   useEffect(() => {
-    if (poll && authUser) {
+    if (poll && authUser && Array.isArray(poll.options)) {
       // Find if user has voted for any option
       for (const option of poll.options) {
-        const hasVoted = option.votes.some(voter => voter._id === authUser._id);
+        const votes = Array.isArray(option.votes) ? option.votes : [];
+        const hasVoted = votes.some(voter => voter && voter._id === authUser._id);
         if (hasVoted) {
           setSelectedOption(option._id);
           break;
@@ -28,13 +31,23 @@ const PollDisplay = ({ poll, messageId }) => {
     }
   }, [poll, authUser]);
   
-  // Get total votes
-  const totalVotes = poll.options.reduce((sum, option) => sum + option.votes.length, 0);
+  // Get total votes with defensive programming
+  const calculateTotalVotes = () => {
+    if (!Array.isArray(poll.options)) return 0;
+    
+    return poll.options.reduce((sum, option) => {
+      const votesCount = Array.isArray(option.votes) ? option.votes.length : 0;
+      return sum + votesCount;
+    }, 0);
+  };
+  
+  const totalVotes = calculateTotalVotes();
   
   // Calculate percentage for each option - fixed to handle zero case properly
   const getPercentage = (votes) => {
     if (totalVotes === 0) return 0;
-    return Math.round((votes.length / totalVotes) * 100);
+    const voteCount = Array.isArray(votes) ? votes.length : 0;
+    return Math.round((voteCount / totalVotes) * 100);
   };
   
   // Handle vote submission
@@ -68,14 +81,15 @@ const PollDisplay = ({ poll, messageId }) => {
     }
   };
   
-  const isCreator = poll.creator._id === authUser._id;
+  // Check if current user is the poll creator
+  const isCreator = poll.creator && authUser && poll.creator._id === authUser._id;
   
   return (
     <div className="w-full">
       <div className="flex items-center gap-2 mb-2">
         <BarChart3 className="size-4 text-primary opacity-70" />
         <span className="text-sm font-medium">Poll</span>
-        {!poll.isActive && (
+        {poll.isActive === false && (
           <div className="badge badge-sm badge-outline gap-1 ml-auto">
             <AlertTriangle className="size-3" />
             Closed
@@ -86,13 +100,14 @@ const PollDisplay = ({ poll, messageId }) => {
       <h3 className="font-medium text-base mb-3">{poll.question}</h3>
       
       <div className="space-y-2">
-        {poll.options.map((option) => {
-          const percentage = getPercentage(option.votes);
+        {safeOptions.map((option) => {
+          const safeVotes = Array.isArray(option.votes) ? option.votes : [];
+          const percentage = getPercentage(safeVotes);
           const isSelected = selectedOption === option._id;
-          const hasVotes = option.votes.length > 0;
+          const hasVotes = safeVotes.length > 0;
           
           return (
-            <div key={option._id} className="space-y-1">
+            <div key={option._id || Math.random()} className="space-y-1">
               <div 
                 className={`
                   relative p-2 rounded transition-all poll-option
@@ -143,20 +158,20 @@ const PollDisplay = ({ poll, messageId }) => {
                       }}
                     >
                       <Users className="size-3" />
-                      {option.votes.length} {option.votes.length === 1 ? "vote" : "votes"}
+                      {safeVotes.length} {safeVotes.length === 1 ? "vote" : "votes"}
                     </button>
                     
                     {/* Voters list */}
                     {expandedOption === option._id && (
                       <div className="mt-1 pl-5 space-y-1 animate-fadeIn">
-                        {option.votes.map(voter => (
-                          <div key={voter._id} className="flex items-center gap-1.5">
+                        {safeVotes.map(voter => (
+                          <div key={voter?._id || Math.random()} className="flex items-center gap-1.5">
                             <div className="avatar">
                               <div className="size-4 rounded-full">
-                                <img src={voter.profilePic || "/avatar.png"} alt={voter.fullName} />
+                                <img src={voter?.profilePic || "/avatar.png"} alt={voter?.fullName || "Voter"} />
                               </div>
                             </div>
-                            <span className="text-xs">{voter.fullName}</span>
+                            <span className="text-xs">{voter?.fullName || "Unknown User"}</span>
                           </div>
                         ))}
                       </div>
@@ -177,7 +192,7 @@ const PollDisplay = ({ poll, messageId }) => {
         </div>
         
         <div className="flex gap-2">
-          {poll.isActive && (
+          {poll.isActive !== false && (
             <>
               {!selectedOption ? (
                 <button
@@ -211,15 +226,17 @@ const PollDisplay = ({ poll, messageId }) => {
       </div>
       
       {/* Poll creator information */}
-      <div className="flex items-center mt-2 text-xs opacity-60">
-        <span>Created by </span>
-        <div className="avatar mx-1">
-          <div className="size-3 rounded-full">
-            <img src={poll.creator.profilePic || "/avatar.png"} alt={poll.creator.fullName} />
+      {poll.creator && (
+        <div className="flex items-center mt-2 text-xs opacity-60">
+          <span>Created by </span>
+          <div className="avatar mx-1">
+            <div className="size-3 rounded-full">
+              <img src={poll.creator?.profilePic || "/avatar.png"} alt={poll.creator?.fullName || "Creator"} />
+            </div>
           </div>
+          <span>{poll.creator?.fullName || "Unknown"}</span>
         </div>
-        <span>{poll.creator.fullName}</span>
-      </div>
+      )}
     </div>
   );
 };
