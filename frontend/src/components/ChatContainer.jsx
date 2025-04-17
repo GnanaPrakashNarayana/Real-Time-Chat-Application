@@ -97,6 +97,10 @@ const ChatContainer = () => {
             // In frontend/src/components/ChatContainer.jsx
             // Update the message bubble rendering
 
+            // Open frontend/src/components/ChatContainer.jsx
+            // Find the section that renders the chat bubble content
+
+            // Replace this problematic section:
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img
@@ -130,7 +134,7 @@ const ChatContainer = () => {
                 </div>
               )}
               
-              {/* Message text content - make sure this is present */}
+              {/* Message text content - removing any debug text or comments */}
               {message.text && <p>{message.text}</p>}
             </div>
             

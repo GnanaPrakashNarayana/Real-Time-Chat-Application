@@ -111,17 +111,18 @@ sendMessage: async (messageData) => {
     };
   }
   
+  // In useChatStore.js
+  // Make sure the text is being passed directly without additional comments
   const tempMessage = {
     _id: tempId,
     senderId: useAuthStore.getState().authUser._id,
     receiverId: selectedUser._id,
-    text: messageData.text,
-    image: messageData.image,
+    text: messageText, // Should be just the message text, no debug info
+    image: messageImage,
     document: tempDocument,
     createdAt: new Date().toISOString(),
     sending: true
   };
-  
   set({ messages: [...messages, tempMessage] });
   
   try {
