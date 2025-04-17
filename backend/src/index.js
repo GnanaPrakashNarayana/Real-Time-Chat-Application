@@ -14,13 +14,6 @@ import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
 import groupRoutes from "./routes/group.route.js";
 
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://chatterpillar.netlify.app",
-  "https://chatterpillar.netlify.app/"  // With trailing slash just in case
-];
-
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,40 +22,49 @@ dotenv.config();
 
 const PORT = process.env.PORT;
 
-app.use(express.static(path.join(__dirname, '../public')));
+// CORS Middleware - Move this BEFORE any other middleware
+app.use(cors({
+  origin: ['https://chatterpillar.netlify.app', 'http://localhost:5173', process.env.FRONTEND_URL],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+// Handle OPTIONS requests explicitly for preflight
+app.options('*', cors());
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
 });
 
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} from ${req.headers.origin}`);
+  next();
+});
+
+// Other middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
-// Update this section in backend/src/index.js
-app.use(
-  cors({
-    origin: function(origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, etc.)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.FRONTEND_URL === origin) {
-        callback(null, true);
-      } else {
-        console.log("Blocked origin:", origin);
-        callback(null, true); // Temporarily allow all origins while debugging
-      }
-    },
-    credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
 
-// Add this after your CORS middleware
-app.options('*', cors()); // Handle preflight requests
-
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
+
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    message: 'CORS is working correctly',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
 
 console.log("Starting server...");
 console.log("NODE_ENV:", process.env.NODE_ENV);
@@ -70,15 +72,6 @@ console.log("Current directory:", __dirname);
 
 // In backend/src/index.js
 // Find the production block and replace it
-
-// Add this to your index.js to test CORS
-app.get('/api/cors-test', (req, res) => {
-  res.json({ 
-    message: 'CORS is working!',
-    origin: req.headers.origin,
-    time: new Date().toISOString()
-  });
-});
 
 if (process.env.NODE_ENV === "production") {
   try {
