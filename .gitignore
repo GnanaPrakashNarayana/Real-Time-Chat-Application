@@ -1,0 +1,2 @@
+# Allow frontend build files
+!frontend/dist/
