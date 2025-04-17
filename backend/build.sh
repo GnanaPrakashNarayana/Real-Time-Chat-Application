@@ -1,37 +1,50 @@
 #!/bin/bash
-echo "Starting build process from backend directory..."
-echo "Current location: $(pwd)"
+# Make script exit on first error
+set -e
 
-# Install backend dependencies
-echo "Installing backend dependencies..."
+echo "Starting build process..."
+
+# Navigate to project root
+cd /opt/render/project/src
+
+# Install root dependencies
+echo "Installing root dependencies..."
 npm install
 
-# Navigate up to root directory, then to frontend
-echo "Moving to frontend directory..."
+# Backend setup
+echo "Setting up backend..."
+cd backend
+npm install
+
+# Frontend setup
+echo "Setting up frontend..."
 cd ../frontend
 
-# Install frontend dependencies and build
-echo "Installing frontend dependencies..."
-npm install
+# Clear node_modules and package-lock.json to avoid the rollup issue
+echo "Cleaning frontend dependencies..."
+rm -rf node_modules package-lock.json
 
+# Install dependencies with specific flags to address the rollup issue
+echo "Installing frontend dependencies..."
+npm install --no-optional
+
+# Explicitly install the problematic package
+echo "Installing rollup dependencies..."
+npm install @rollup/rollup-linux-x64-gnu || echo "Optional dependency not available, continuing anyway..."
+
+# Build the frontend
 echo "Building frontend..."
 npm run build
 
-# Check if build was successful
+# Verify dist directory exists
 if [ -d "dist" ]; then
-  echo "Frontend build successful! Files in dist directory:"
-  ls -la dist
+  echo "Frontend build successful"
 else
   echo "Frontend build failed! dist directory not found"
   exit 1
 fi
 
-# Create required directory structure in Render's persistent storage
-echo "Creating directory structure for frontend files..."
-mkdir -p /opt/render/project/src/frontend/dist
+# Return to project root
+cd ..
 
-# Copy built files to the expected location
-echo "Copying frontend build files to expected location..."
-cp -r dist/* /opt/render/project/src/frontend/dist/
-
-echo "Build process complete!"
+echo "Build process completed successfully"
