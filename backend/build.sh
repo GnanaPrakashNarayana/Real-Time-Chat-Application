@@ -1,5 +1,5 @@
 #!/bin/bash
-# Make script exit on first error
+# Exit on first error
 set -e
 
 echo "Starting build process..."
@@ -7,9 +7,8 @@ echo "Starting build process..."
 # Navigate to project root
 cd /opt/render/project/src
 
-# Install root dependencies
-echo "Installing root dependencies..."
-npm install
+# Skip root-level npm install since it has link: dependencies
+echo "Skipping root dependencies due to link: protocol issues"
 
 # Backend setup
 echo "Setting up backend..."
@@ -20,31 +19,31 @@ npm install
 echo "Setting up frontend..."
 cd ../frontend
 
-# Clear node_modules and package-lock.json to avoid the rollup issue
+# Clean existing dependencies to avoid issues
 echo "Cleaning frontend dependencies..."
 rm -rf node_modules package-lock.json
 
-# Install dependencies with specific flags to address the rollup issue
+# Install dependencies with flags to avoid optional dependencies issues
 echo "Installing frontend dependencies..."
 npm install --no-optional
-
-# Explicitly install the problematic package
-echo "Installing rollup dependencies..."
-npm install @rollup/rollup-linux-x64-gnu || echo "Optional dependency not available, continuing anyway..."
 
 # Build the frontend
 echo "Building frontend..."
 npm run build
 
-# Verify dist directory exists
+# Verify the build succeeded
 if [ -d "dist" ]; then
-  echo "Frontend build successful"
+  echo "Frontend build successful!"
+  
+  # Copy dist to a location where backend can serve it
+  echo "Copying frontend build to public directory..."
+  mkdir -p ../backend/public
+  cp -r dist/* ../backend/public/
 else
   echo "Frontend build failed! dist directory not found"
   exit 1
 fi
 
-# Return to project root
-cd ..
-
-echo "Build process completed successfully"
+# Return to backend directory for starting the server
+cd ../backend
+echo "Setup complete. Ready to start the server."
