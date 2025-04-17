@@ -104,7 +104,7 @@ const ChatContainer = () => {
                 />
               )}
               
-              {/* Document display */}
+              {/* Document display - Updated to ensure proper rendering */}
               {message.document && (
                 <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg mb-2">
                   <FileText className="size-5" />
