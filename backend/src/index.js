@@ -12,6 +12,8 @@ import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
 import groupRoutes from "./routes/group.route.js";
 
+import * as fs from 'fs';
+
 
 
 dotenv.config();
@@ -35,7 +37,7 @@ app.use("/api/groups", groupRoutes);
 // Update the static file serving path
 if (process.env.NODE_ENV === "production") {
   // Make sure path is correct
-  const frontendPath = path.join(__dirname, "../../frontend/dist");
+  const frontendPath = path.join(__dirname, "../../../frontend/dist");
   console.log("Serving frontend from:", frontendPath);
   
   app.use(express.static(frontendPath));
@@ -59,7 +61,7 @@ if (process.env.NODE_ENV === "production") {
   try {
     const frontendPath = path.join(__dirname, "../../frontend/dist");
     console.log("Frontend path:", frontendPath);
-    console.log("Frontend path exists:", require('fs').existsSync(frontendPath));
+    console.log("Frontend path exists:", fs.existsSync(frontendPath));
     
     app.use(express.static(frontendPath));
     
@@ -67,7 +69,7 @@ if (process.env.NODE_ENV === "production") {
       try {
         const indexPath = path.join(frontendPath, "index.html");
         console.log("Index path:", indexPath);
-        console.log("Index file exists:", require('fs').existsSync(indexPath));
+        console.log("Index file exists:", fs.existsSync(indexPath));
         res.sendFile(indexPath);
       } catch (error) {
         console.error("Error serving index.html:", error);
