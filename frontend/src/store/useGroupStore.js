@@ -70,6 +70,10 @@ export const useGroupStore = create((set, get) => ({
           name: messageData.document.name,
           type: messageData.document.type,
           size: messageData.document.size
+        } : null,
+        voiceMessage: messageData.voiceMessage ? {
+          data: messageData.voiceMessage.data,
+          duration: messageData.voiceMessage.duration
         } : null
       };
       

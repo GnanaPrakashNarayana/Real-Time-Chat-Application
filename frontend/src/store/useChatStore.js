@@ -111,14 +111,23 @@ sendMessage: async (messageData) => {
     };
   }
   
+  // Handle voice message preview
+  let tempVoiceMessage = null;
+  if (messageData.voiceMessage) {
+    tempVoiceMessage = {
+      duration: messageData.voiceMessage.duration || 0
+    };
+  }
+  
   // Create temporary message object with correct property references
   const tempMessage = {
     _id: tempId,
     senderId: useAuthStore.getState().authUser._id,
     receiverId: selectedUser._id,
-    text: messageData.text, // Fixed: using messageData.text instead of messageText
+    text: messageData.text, 
     image: messageData.image,
     document: tempDocument,
+    voiceMessage: tempVoiceMessage,
     createdAt: new Date().toISOString(),
     sending: true
   };
@@ -135,6 +144,10 @@ sendMessage: async (messageData) => {
         name: messageData.document.name,
         type: messageData.document.type,
         size: messageData.document.size
+      } : null,
+      voiceMessage: messageData.voiceMessage ? {
+        data: messageData.voiceMessage.data,
+        duration: messageData.voiceMessage.duration
       } : null
     };
     

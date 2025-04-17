@@ -6,7 +6,8 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
-import { FileText, Download } from "lucide-react"; // Import icons
+import AudioPlayer from "./AudioPlayer";
+import { FileText, Download } from "lucide-react";
 
 const GroupChatContainer = () => {
   const {
@@ -79,6 +80,17 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
+              {/* Voice message */}
+              {message.voiceMessage && message.voiceMessage.url && (
+                <div className="mb-2">
+                  <AudioPlayer 
+                    audioUrl={message.voiceMessage.url} 
+                    duration={message.voiceMessage.duration}
+                  />
+                </div>
+              )}
+            
+              {/* Image attachment */}
               {message.image && (
                 <img
                   src={message.image}
@@ -110,13 +122,39 @@ const GroupChatContainer = () => {
               )}
               
               {message.text && <p>{message.text}</p>}
+              
+              {/* Fallback for empty messages */}
+              {!message.text && !message.image && !message.document && !message.voiceMessage && (
+                <p className="text-xs italic opacity-50">Attachment</p>
+              )}
             </div>
             
-            {/* ... existing code for reactions and read indicators */}
+            {/* Message Reactions */}
+            <div className="chat-footer opacity-100">
+              <MessageReactions 
+                message={message} 
+                onReact={(messageId, emoji) => reactToGroupMessage(messageId, emoji)}
+                isGroup={true}
+              />
+            </div>
           </div>
         ))}
         
-        {/* ... existing code for typing indicators */}
+        {/* Typing indicators */}
+        {typingUserIds.length > 0 && (
+          <div className="chat chat-start">
+            <div className="chat-image avatar">
+              <div className="size-10 rounded-full border bg-primary/10 flex items-center justify-center">
+                <span className="text-xs font-bold">{typingUserIds.length}</span>
+              </div>
+            </div>
+            <div className="chat-bubble chat-bubble-primary bg-opacity-50 flex gap-1">
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+              <span className="typing-dot"></span>
+            </div>
+          </div>
+        )}
         
         <div ref={messageEndRef} />
       </div>

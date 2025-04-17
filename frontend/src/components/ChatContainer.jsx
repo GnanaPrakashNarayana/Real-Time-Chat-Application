@@ -6,6 +6,7 @@ import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
+import AudioPlayer from "./AudioPlayer";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
@@ -137,6 +138,16 @@ const ChatContainer = () => {
             </div>
             
             <div className="chat-bubble">
+              {/* Voice message */}
+              {message.voiceMessage && message.voiceMessage.url && (
+                <div className="mb-2">
+                  <AudioPlayer 
+                    audioUrl={message.voiceMessage.url} 
+                    duration={message.voiceMessage.duration}
+                  />
+                </div>
+              )}
+              
               {/* Document display - with robust error handling */}
               {message.document && renderDocumentBubble(message.document)}
               
@@ -153,7 +164,7 @@ const ChatContainer = () => {
               {message.text && <p>{message.text}</p>}
               
               {/* Fallback for empty messages */}
-              {!message.text && !message.image && !message.document && (
+              {!message.text && !message.image && !message.document && !message.voiceMessage && (
                 <p className="text-xs italic opacity-50">Attachment</p>
               )}
             </div>

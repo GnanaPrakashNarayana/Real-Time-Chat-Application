@@ -111,7 +111,7 @@ export const getGroupMessages = async (req, res) => {
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    const { text, image, voiceMessage } = req.body;
     const { id: groupId } = req.params;
     const senderId = req.user._id;
 
@@ -122,9 +122,30 @@ export const sendGroupMessage = async (req, res) => {
     }
 
     let imageUrl;
+    let voiceMessageData = null;
+
     if (image) {
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
+    }
+
+    // Handle voice message upload
+    if (voiceMessage && voiceMessage.data) {
+      try {
+        const uploadResponse = await cloudinary.uploader.upload(voiceMessage.data, {
+          resource_type: "auto",
+          folder: "voice_messages",
+          public_id: `voice_group_${Date.now()}`,
+        });
+        
+        voiceMessageData = {
+          url: uploadResponse.secure_url,
+          duration: voiceMessage.duration || 0,
+        };
+      } catch (uploadError) {
+        console.error("Voice message upload error:", uploadError);
+        return res.status(400).json({ error: "Failed to upload voice message" });
+      }
     }
 
     const newMessage = new GroupMessage({
@@ -132,6 +153,7 @@ export const sendGroupMessage = async (req, res) => {
       senderId,
       text,
       image: imageUrl,
+      voiceMessage: voiceMessageData,
       readBy: [senderId], // Mark as read by sender
     });
 

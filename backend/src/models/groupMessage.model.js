@@ -1,5 +1,4 @@
 // backend/src/models/groupMessage.model.js
-// Add reactions field to existing schema
 import mongoose from "mongoose";
 
 const groupMessageSchema = new mongoose.Schema(
@@ -19,6 +18,10 @@ const groupMessageSchema = new mongoose.Schema(
     },
     image: {
       type: String,
+    },
+    voiceMessage: {
+      url: String,
+      duration: Number,
     },
     readBy: [
       {

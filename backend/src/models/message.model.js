@@ -19,6 +19,10 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    voiceMessage: {
+      url: String,
+      duration: Number,
+    },
     read: {
       type: Boolean,
       default: false,

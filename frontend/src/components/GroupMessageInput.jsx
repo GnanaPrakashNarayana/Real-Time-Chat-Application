@@ -1,14 +1,18 @@
 // frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
-import { Image, Send, X, Paperclip } from "lucide-react";
+import { Image, Send, X, Paperclip, Mic } from "lucide-react";
 import toast from "react-hot-toast";
+import VoiceRecorder from "./VoiceRecorder";
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [documentName, setDocumentName] = useState(null); // Just store metadata, not file object
   const [documentData, setDocumentData] = useState(null); // Store base64 data
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const { sendGroupMessage, sendGroupTypingStatus } = useGroupStore();
@@ -101,7 +105,9 @@ const GroupMessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !documentName) return;
+    if (isSending) return;
 
+    setIsSending(true);
     try {
       // Create document data object without any File references
       const messageDocument = documentName ? {
@@ -127,6 +133,34 @@ const GroupMessageInput = () => {
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Failed to send group message");
+    } finally {
+      setIsSending(false);
+    }
+  };
+  
+  // Handle sending voice message
+  const handleSendVoiceMessage = async (voiceData) => {
+    if (!voiceData || !voiceData.data) {
+      toast.error("Invalid voice recording");
+      return;
+    }
+    
+    setIsRecording(false);
+    setIsSending(true);
+    
+    try {
+      await sendGroupMessage({
+        voiceMessage: {
+          data: voiceData.data,
+          duration: voiceData.duration
+        }
+      });
+      toast.success("Voice message sent");
+    } catch (error) {
+      console.error("Failed to send voice message:", error);
+      toast.error("Failed to send voice message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -168,56 +202,76 @@ const GroupMessageInput = () => {
           </button>
         </div>
       )}
+      
+      {isRecording ? (
+        <VoiceRecorder
+          onSend={handleSendVoiceMessage}
+          onCancel={() => setIsRecording(false)}
+        />
+      ) : (
+        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+          <div className="flex-1 flex gap-2">
+            <input
+              type="text"
+              className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+              placeholder="Type a message..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              disabled={isSending}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+            />
+            <input
+              type="file"
+              className="hidden"
+              ref={documentInputRef}
+              onChange={handleDocumentChange}
+            />
 
-      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-        <div className="flex-1 flex gap-2">
-          <input
-            type="text"
-            className="w-full input input-bordered rounded-lg input-sm sm:input-md"
-            placeholder="Type a message..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImageChange}
-          />
-          <input
-            type="file"
-            className="hidden"
-            ref={documentInputRef}
-            onChange={handleDocumentChange}
-          />
-
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSending}
+              title="Send image"
+            >
+              <Image size={20} />
+            </button>
+            
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={() => documentInputRef.current?.click()}
+              disabled={isSending}
+              title="Send document"
+            >
+              <Paperclip size={20} />
+            </button>
+            
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={() => setIsRecording(true)}
+              disabled={isSending}
+              title="Record voice message"
+            >
+              <Mic size={20} />
+            </button>
+          </div>
           <button
-            type="button"
-            className="hidden sm:flex btn btn-circle"
-            onClick={() => fileInputRef.current?.click()}
-            title="Send image"
+            type="submit"
+            className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
+            disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
           >
-            <Image size={20} />
+            {!isSending && <Send size={22} />}
           </button>
-          
-          <button
-            type="button"
-            className="hidden sm:flex btn btn-circle"
-            onClick={() => documentInputRef.current?.click()}
-            title="Send document"
-          >
-            <Paperclip size={20} />
-          </button>
-        </div>
-        <button
-          type="submit"
-          className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview && !documentName}
-        >
-          <Send size={22} />
-        </button>
-      </form>
+        </form>
+      )}
     </div>
   );
 };

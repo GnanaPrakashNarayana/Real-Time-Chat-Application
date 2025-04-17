@@ -38,17 +38,16 @@ export const getMessages = async (req, res) => {
   }
 };
 
-// In backend/src/controllers/message.controller.js
-// In backend/src/controllers/message.controller.js
 export const sendMessage = async (req, res) => {
   try {
     // Get data from request body
-    const { text, image, document } = req.body;
+    const { text, image, document, voiceMessage } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     let imageUrl;
     let documentData = null;
+    let voiceMessageData = null;
 
     if (image) {
       // Upload base64 image to cloudinary
@@ -77,13 +76,33 @@ export const sendMessage = async (req, res) => {
       }
     }
 
-    // Create the message with 'text' not 'messageText'
+    // Handle voice message upload
+    if (voiceMessage && voiceMessage.data) {
+      try {
+        const uploadResponse = await cloudinary.uploader.upload(voiceMessage.data, {
+          resource_type: "auto",
+          folder: "voice_messages",
+          public_id: `voice_${Date.now()}`,
+        });
+        
+        voiceMessageData = {
+          url: uploadResponse.secure_url,
+          duration: voiceMessage.duration || 0,
+        };
+      } catch (uploadError) {
+        console.error("Voice message upload error:", uploadError);
+        return res.status(400).json({ error: "Failed to upload voice message" });
+      }
+    }
+
+    // Create the message with all possible content types
     const newMessage = new Message({
       senderId,
       receiverId,
-      text, // Use text from req.body, not messageText
+      text, 
       image: imageUrl,
       document: documentData,
+      voiceMessage: voiceMessageData,
     });
 
     await newMessage.save();
@@ -99,13 +118,6 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-// backend/src/controllers/message.controller.js
-// Add this new function to the file
-// Add this function to backend/src/controllers/message.controller.js
-
-// backend/src/controllers/message.controller.js
-// Add this function to your existing file
 
 export const markMessagesAsRead = async (req, res) => {
   try {
@@ -130,12 +142,6 @@ export const markMessagesAsRead = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-// backend/src/controllers/message.controller.js
-// Add these methods to the existing file
-
-// backend/src/controllers/message.controller.js
-// Add this function to the file
 
 export const reactToMessage = async (req, res) => {
   try {
