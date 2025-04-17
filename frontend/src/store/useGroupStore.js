@@ -11,6 +11,7 @@ export const useGroupStore = create((set, get) => ({
   isLoadingGroups: false,
   isLoadingMessages: false,
   isCreatingGroup: false,
+  isCreatingPoll: false,
   typingInGroup: {}, // Map of user IDs typing in each group
   
   // Create a new group
@@ -140,6 +141,71 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
+  // Create a poll in the group
+  createPoll: async (pollData) => {
+    set({ isCreatingPoll: true });
+    try {
+      const res = await axiosInstance.post("/polls/create", pollData);
+      
+      // Add the new message to the group messages
+      set(state => ({
+        groupMessages: [...state.groupMessages, res.data],
+        isCreatingPoll: false
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error creating poll:", error);
+      toast.error(error.response?.data?.message || "Failed to create poll");
+      set({ isCreatingPoll: false });
+      return false;
+    }
+  },
+  
+  // Vote on a poll
+  votePoll: async (voteData) => {
+    try {
+      const res = await axiosInstance.post("/polls/vote", voteData);
+      
+      // Update the poll in the messages
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => 
+          msg.poll?._id === res.data._id 
+            ? { ...msg, poll: res.data } 
+            : msg
+        )
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      toast.error(error.response?.data?.message || "Failed to submit vote");
+      return false;
+    }
+  },
+  
+  // End a poll (only creator can end)
+  endPoll: async (pollId) => {
+    try {
+      const res = await axiosInstance.put(`/polls/end/${pollId}`);
+      
+      // Update the poll in the messages
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => 
+          msg.poll?._id === res.data._id 
+            ? { ...msg, poll: res.data } 
+            : msg
+        )
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error ending poll:", error);
+      toast.error(error.response?.data?.message || "Failed to end poll");
+      return false;
+    }
+  },
+  
   // Set selected group
   setSelectedGroup: (group) => {
     set({ selectedGroup: group });
@@ -176,13 +242,43 @@ export const useGroupStore = create((set, get) => ({
           const toastId = t.id;
           const element = document.createElement('div');
           element.className = 'cursor-pointer p-3 bg-primary text-primary-content rounded';
-          element.innerHTML = `<b>${group.name}</b>: ${message.text || "Sent an image"}`;
+          element.innerHTML = `<b>${group.name}</b>: ${message.text || "Sent an attachment"}`;
           element.onclick = () => {
             get().setSelectedGroup(get().groups.find(g => g._id === group._id));
             toast.dismiss(toastId);
           };
           return element;
         }, { duration: 4000 });
+      }
+    });
+    
+    // Handle poll votes
+    socket.on("pollVote", (data) => {
+      const { selectedGroup, groupMessages } = get();
+      
+      if (selectedGroup && selectedGroup._id === data.groupId) {
+        set(state => ({
+          groupMessages: state.groupMessages.map(msg => 
+            msg._id === data.messageId
+              ? { ...msg, poll: data.poll }
+              : msg
+          )
+        }));
+      }
+    });
+    
+    // Handle poll ended
+    socket.on("pollEnded", (data) => {
+      const { selectedGroup, groupMessages } = get();
+      
+      if (selectedGroup && selectedGroup._id === data.groupId) {
+        set(state => ({
+          groupMessages: state.groupMessages.map(msg => 
+            msg._id === data.messageId
+              ? { ...msg, poll: data.poll }
+              : msg
+          )
+        }));
       }
     });
     
@@ -277,6 +373,8 @@ export const useGroupStore = create((set, get) => ({
     if (!socket) return;
     
     socket.off("newGroupMessage");
+    socket.off("pollVote");
+    socket.off("pollEnded");
     socket.off("newGroup");
     socket.off("groupUpdated");
     socket.off("removedFromGroup");

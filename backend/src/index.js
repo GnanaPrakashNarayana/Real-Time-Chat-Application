@@ -14,6 +14,8 @@ import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
 import groupRoutes from "./routes/group.route.js";
 
+import pollRoutes from "./routes/poll.route.js";
+
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -56,6 +58,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
+app.use("/api/polls", pollRoutes);
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {

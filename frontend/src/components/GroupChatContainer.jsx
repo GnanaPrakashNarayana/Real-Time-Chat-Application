@@ -7,6 +7,7 @@ import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
+import PollDisplay from "./polls/PollDisplay";
 import { FileText, Download } from "lucide-react";
 
 const GroupChatContainer = () => {
@@ -47,11 +48,6 @@ const GroupChatContainer = () => {
     );
   }
 
-  // Get members by ID for showing who read messages
-  const getMemberById = (memberId) => {
-    return selectedGroup.members.find(m => m._id === memberId);
-  };
-
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <GroupHeader />
@@ -80,6 +76,16 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
+              {/* Poll display */}
+              {message.poll && (
+                <div className="mb-2">
+                  <PollDisplay 
+                    poll={message.poll}
+                    messageId={message._id}
+                  />
+                </div>
+              )}
+            
               {/* Voice message */}
               {message.voiceMessage && message.voiceMessage.url && (
                 <div className="mb-2">
@@ -121,10 +127,11 @@ const GroupChatContainer = () => {
                 </div>
               )}
               
-              {message.text && <p>{message.text}</p>}
+              {/* Regular text message content - don't show if it's just the poll text */}
+              {message.text && !message.poll && <p>{message.text}</p>}
               
               {/* Fallback for empty messages */}
-              {!message.text && !message.image && !message.document && !message.voiceMessage && (
+              {!message.text && !message.image && !message.document && !message.voiceMessage && !message.poll && (
                 <p className="text-xs italic opacity-50">Attachment</p>
               )}
             </div>

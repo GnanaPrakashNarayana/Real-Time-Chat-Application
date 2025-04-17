@@ -55,3 +55,50 @@
 .voice-recorder.recording {
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5);
 }
+
+/* Poll animation styles */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.poll-option:hover {
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.poll-progress {
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced voice message styling */
+.voice-recorder {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.voice-recorder:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

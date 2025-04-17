@@ -1,9 +1,10 @@
 // frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
-import { Image, Send, X, Paperclip, Mic } from "lucide-react";
+import { Image, Send, X, Paperclip, Mic, BarChart3 } from "lucide-react";
 import toast from "react-hot-toast";
 import VoiceRecorder from "./VoiceRecorder";
+import PollCreator from "./polls/PollCreator";
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
@@ -12,6 +13,7 @@ const GroupMessageInput = () => {
   const [documentData, setDocumentData] = useState(null); // Store base64 data
   const [isRecording, setIsRecording] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showPollCreator, setShowPollCreator] = useState(false);
   
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -203,6 +205,12 @@ const GroupMessageInput = () => {
         </div>
       )}
       
+      {showPollCreator && (
+        <div className="mb-3">
+          <PollCreator onClose={() => setShowPollCreator(false)} />
+        </div>
+      )}
+      
       {isRecording ? (
         <VoiceRecorder
           onSend={handleSendVoiceMessage}
@@ -237,7 +245,7 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isSending}
+              disabled={isSending || showPollCreator}
               title="Send image"
             >
               <Image size={20} />
@@ -247,7 +255,7 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => documentInputRef.current?.click()}
-              disabled={isSending}
+              disabled={isSending || showPollCreator}
               title="Send document"
             >
               <Paperclip size={20} />
@@ -257,16 +265,26 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => setIsRecording(true)}
-              disabled={isSending}
+              disabled={isSending || showPollCreator}
               title="Record voice message"
             >
               <Mic size={20} />
+            </button>
+            
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={() => setShowPollCreator(!showPollCreator)}
+              disabled={isSending || isRecording}
+              title="Create a poll"
+            >
+              <BarChart3 size={20} />
             </button>
           </div>
           <button
             type="submit"
             className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
-            disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
+            disabled={(!text.trim() && !imagePreview && !documentName) || isSending || showPollCreator}
           >
             {!isSending && <Send size={22} />}
           </button>

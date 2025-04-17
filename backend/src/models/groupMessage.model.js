@@ -23,6 +23,10 @@ const groupMessageSchema = new mongoose.Schema(
       url: String,
       duration: Number,
     },
+    poll: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Poll",
+    },
     readBy: [
       {
         type: mongoose.Schema.Types.ObjectId,
