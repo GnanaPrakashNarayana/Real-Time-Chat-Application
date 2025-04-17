@@ -2,6 +2,11 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
 export const protectRoute = async (req, res, next) => {
+  // Skip auth check for preflight requests
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   try {
     let token;
     

@@ -14,6 +14,13 @@ import messageRoutes from "./routes/message.route.js";
 import { app, server } from "./lib/socket.js";
 import groupRoutes from "./routes/group.route.js";
 
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://chatterpillar.netlify.app",
+  "https://chatterpillar.netlify.app/"  // With trailing slash just in case
+];
+
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,14 +40,26 @@ app.use(cookieParser());
 // Update this section in backend/src/index.js
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-      "https://chatterpillar.netlify.app" // Add your Netlify domain
-    ],
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.FRONTEND_URL === origin) {
+        callback(null, true);
+      } else {
+        console.log("Blocked origin:", origin);
+        callback(null, true); // Temporarily allow all origins while debugging
+      }
+    },
     credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
+// Add this after your CORS middleware
+app.options('*', cors()); // Handle preflight requests
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
@@ -51,6 +70,15 @@ console.log("Current directory:", __dirname);
 
 // In backend/src/index.js
 // Find the production block and replace it
+
+// Add this to your index.js to test CORS
+app.get('/api/cors-test', (req, res) => {
+  res.json({ 
+    message: 'CORS is working!',
+    origin: req.headers.origin,
+    time: new Date().toISOString()
+  });
+});
 
 if (process.env.NODE_ENV === "production") {
   try {

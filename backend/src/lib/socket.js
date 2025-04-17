@@ -6,15 +6,17 @@ import jwt from "jsonwebtoken";
 const app = express();
 const server = http.createServer(app);
 
-// In your socket.js file
+// In socket.js
 const io = new Server(server, {
   cors: {
     origin: [
-      process.env.FRONTEND_URL, 
       "http://localhost:5173",
-      "https://chatterpillar.netlify.app"
+      "https://chatterpillar.netlify.app",
+      "https://chatterpillar.netlify.app/",
+      process.env.FRONTEND_URL
     ],
     credentials: true,
+    methods: ["GET", "POST"]
   },
 });
 
