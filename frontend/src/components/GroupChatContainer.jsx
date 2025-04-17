@@ -1,3 +1,4 @@
+// frontend/src/components/GroupChatContainer.jsx
 import { useEffect, useRef } from "react";
 import { useGroupStore } from "../store/useGroupStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -76,10 +77,6 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
-            // In GroupChatContainer.jsx, update the poll display section:
-
-            // In GroupChatContainer.jsx, update the part that displays polls:
-
               {/* Poll display */}
               {message.poll && message.poll.options && (
                 <div className="w-full">

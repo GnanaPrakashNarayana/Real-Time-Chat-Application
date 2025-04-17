@@ -167,6 +167,7 @@ export const useGroupStore = create((set, get) => ({
 
   // Vote on a poll
   // In useGroupStore.js
+  // In useGroupStore.js
   votePoll: async (voteData) => {
     try {
       const res = await axiosInstance.post("/polls/vote", voteData);
@@ -184,13 +185,18 @@ export const useGroupStore = create((set, get) => ({
         options: safeOptions
       };
       
-      // Update the poll in the messages
+      // Update the poll in the messages - force a re-render by creating new objects
       set(state => ({
         groupMessages: state.groupMessages.map(msg => {
           if (msg.poll && msg.poll._id === safePoll._id) {
             return { 
               ...msg, 
-              poll: safePoll
+              poll: {
+                ...safePoll,
+                // Force to be seen as a new object to trigger re-render
+                _id: safePoll._id,
+                timestamp: Date.now()
+              }
             };
           }
           return msg;
