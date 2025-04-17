@@ -94,6 +94,9 @@ const ChatContainer = () => {
                 </span>
               )}
             </div>
+            // In frontend/src/components/ChatContainer.jsx
+            // Update the message bubble rendering
+
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img
@@ -104,20 +107,13 @@ const ChatContainer = () => {
               )}
               
               {/* Document display */}
-              // In frontend/src/components/ChatContainer.jsx
-              // Modify the document display part:
-
               {message.document && (
                 <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg mb-2">
                   <FileText className="size-5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {message.document.name || "Document"}
-                    </p>
+                    <p className="text-sm font-medium truncate">{message.document.name || "Document"}</p>
                     <p className="text-xs opacity-70">
-                      {message.document.size ? 
-                        ((message.document.size / 1024).toFixed(2) + " KB") : 
-                        "Unknown size"}
+                      {message.document.size ? ((message.document.size / 1024).toFixed(2) + " KB") : "Unknown size"}
                     </p>
                   </div>
                   {message.document.url && (
@@ -134,6 +130,7 @@ const ChatContainer = () => {
                 </div>
               )}
               
+              {/* Message text content - make sure this is present */}
               {message.text && <p>{message.text}</p>}
             </div>
             
