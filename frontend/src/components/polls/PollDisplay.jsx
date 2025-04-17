@@ -48,7 +48,6 @@ const PollDisplay = ({ poll, messageId }) => {
     }
   }, [poll, authUser]);
   
-  // Get total votes with defensive programming
   const calculateTotalVotes = () => {
     if (!Array.isArray(poll.options)) return 0;
     
@@ -60,15 +59,19 @@ const PollDisplay = ({ poll, messageId }) => {
   
   const totalVotes = calculateTotalVotes();
   
-  // Calculate percentage for each option - fixed to handle zero case properly
   const getPercentage = (votes) => {
-    if (totalVotes === 0) return 0;
+    // Get vote count with proper type checking
     const voteCount = Array.isArray(votes) ? votes.length : 0;
+    
+    // If no votes, return 0%
+    if (totalVotes === 0) return 0;
+    
+    // Calculate percentage and round to avoid floating point issues
     return Math.round((voteCount / totalVotes) * 100);
   };
   
-  // Handle vote submission
-  const handleVote = async () => {
+// After handling the vote submission
+const handleVote = async () => {
     if (!selectedOption) return;
     
     setIsSubmitting(true);
@@ -77,6 +80,11 @@ const PollDisplay = ({ poll, messageId }) => {
         pollId: poll._id,
         optionId: selectedOption
       });
+      
+      // Force recalculation of vote count
+      const newTotalVotes = calculateTotalVotes();
+      setTotalVotes(newTotalVotes);
+      
     } catch (error) {
       console.error("Error voting on poll:", error);
       toast.error("Failed to submit your vote");
