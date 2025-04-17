@@ -77,7 +77,6 @@ const GroupChatContainer = () => {
               </time>
             </div>
             <div className="chat-bubble flex flex-col">
-            // In GroupChatContainer.jsx, update the message bubble rendering part:
 
               {/* Poll display */}
               {message.poll && (
