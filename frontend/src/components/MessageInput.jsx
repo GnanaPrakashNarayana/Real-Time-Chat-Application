@@ -89,31 +89,49 @@ const MessageInput = () => {
   // In frontend/src/components/MessageInput.jsx
 // Update the handleSendMessage function:
 
+// In frontend/src/components/MessageInput.jsx
+// Replace the handleSendMessage function with this version:
+
 const handleSendMessage = async (e) => {
   e.preventDefault();
   if (!text.trim() && !imagePreview && !documentFile) return;
-  if (isSending) return; // Prevent double-sending
+  if (isSending) return;
 
   setIsSending(true);
   
-  // Store values in variables to clear inputs immediately
+  // Store values in variables
   const messageText = text.trim();
   const messageImage = imagePreview;
   
-  // Use our utility function to safely prepare document data
+  // Create a separate document data object - NO references to "file" directly
   let messageDocument = null;
-  try {
-    if (documentFile) {
-      messageDocument = await prepareDocumentForUpload(documentFile);
+  if (documentFile) {
+    try {
+      // Convert file to base64 string
+      const fileReader = new FileReader();
+      const filePromise = new Promise((resolve, reject) => {
+        fileReader.onload = () => resolve(fileReader.result);
+        fileReader.onerror = reject;
+      });
+      
+      fileReader.readAsDataURL(documentFile.file);
+      const dataUrl = await filePromise;
+      
+      messageDocument = {
+        data: dataUrl,
+        name: documentFile.name,
+        type: documentFile.type,
+        size: documentFile.size
+      };
+    } catch (error) {
+      console.error("Error processing document:", error);
+      toast.error("Failed to process file");
+      setIsSending(false);
+      return;
     }
-  } catch (error) {
-    console.error("Error preparing document:", error);
-    toast.error("Failed to process document");
-    setIsSending(false);
-    return;
   }
   
-  // Clear form immediately for better UX
+  // Clear form immediately
   setText("");
   setImagePreview(null);
   setDocumentFile(null);
@@ -121,11 +139,15 @@ const handleSendMessage = async (e) => {
   if (documentInputRef.current) documentInputRef.current.value = "";
 
   try {
-    await sendMessage({
+    const success = await sendMessage({
       text: messageText,
       image: messageImage,
-      document: messageDocument,
+      document: messageDocument
     });
+    
+    if (!success) {
+      toast.error("Failed to send message");
+    }
   } catch (error) {
     console.error("Failed to send message:", error);
     toast.error("Failed to send message");

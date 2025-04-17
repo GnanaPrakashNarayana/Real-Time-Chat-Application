@@ -91,13 +91,25 @@ export const useChatStore = create((set, get) => ({
 // In frontend/src/store/useChatStore.js
 
 // Update sendMessage function
+// In frontend/src/store/useChatStore.js
+// Update the sendMessage function to avoid file references:
+
 sendMessage: async (messageData) => {
   const { selectedUser, messages } = get();
-  // Create a temporary message object with a temporary ID to show immediately
   const tempId = Date.now().toString();
   
-  // Use our utility function to create a safe document object
-  const safeDocumentObject = createSafeDocumentObject(messageData.document);
+  // Create a safe document object without any file references
+  let tempDocument = null;
+  if (messageData.document) {
+    tempDocument = {
+      name: messageData.document.name || 'Document',
+      type: messageData.document.type || 'application/octet-stream',
+      size: messageData.document.size || 0,
+      // Don't use URL.createObjectURL which requires a file object
+      // Instead, show a placeholder or use a static icon
+      url: '#'
+    };
+  }
   
   const tempMessage = {
     _id: tempId,
@@ -105,19 +117,24 @@ sendMessage: async (messageData) => {
     receiverId: selectedUser._id,
     text: messageData.text,
     image: messageData.image,
-    document: safeDocumentObject,
+    document: tempDocument,
     createdAt: new Date().toISOString(),
     sending: true
   };
   
-  // Add temp message to state immediately
+  // Add temp message to state
   set({ messages: [...messages, tempMessage] });
   
-  // Create a safe copy of the message data for the API call
-  const safeMessageData = {
+  // Create a clean copy of messageData for API
+  const apiMessageData = {
     text: messageData.text,
     image: messageData.image,
-    document: messageData.document
+    document: messageData.document ? {
+      data: messageData.document.data,
+      name: messageData.document.name,
+      type: messageData.document.type,
+      size: messageData.document.size
+    } : null
   };
   
   // Retry mechanism
@@ -126,7 +143,7 @@ sendMessage: async (messageData) => {
   
   while (retries > 0 && !success) {
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, safeMessageData);
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, apiMessageData);
       
       // Replace temp message with actual message
       set(state => ({
@@ -142,17 +159,14 @@ sendMessage: async (messageData) => {
       console.log(`Error sending message. Retries left: ${retries}`, error);
       
       if (retries === 0) {
-        // If all retries failed, mark the message as failed
         set(state => ({
           messages: state.messages.map(msg => 
             msg._id === tempId ? {...msg, sending: false, failed: true} : msg
           )
         }));
-        toast.error("Failed to send message. Please try again.");
         return false;
       }
       
-      // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }

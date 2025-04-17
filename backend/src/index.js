@@ -32,11 +32,16 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
 
+// Update the static file serving path
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  // Make sure path is correct
+  const frontendPath = path.join(__dirname, "../../frontend/dist");
+  console.log("Serving frontend from:", frontendPath);
+  
+  app.use(express.static(frontendPath));
 
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+    res.sendFile(path.join(frontendPath, "index.html"));
   });
 }
 
@@ -44,3 +49,32 @@ server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);
   connectDB();
 });
+
+console.log("Starting server...");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("Current directory:", __dirname);
+
+// Also add try-catch to your static file serving code
+if (process.env.NODE_ENV === "production") {
+  try {
+    const frontendPath = path.join(__dirname, "../../frontend/dist");
+    console.log("Frontend path:", frontendPath);
+    console.log("Frontend path exists:", require('fs').existsSync(frontendPath));
+    
+    app.use(express.static(frontendPath));
+    
+    app.get("*", (req, res) => {
+      try {
+        const indexPath = path.join(frontendPath, "index.html");
+        console.log("Index path:", indexPath);
+        console.log("Index file exists:", require('fs').existsSync(indexPath));
+        res.sendFile(indexPath);
+      } catch (error) {
+        console.error("Error serving index.html:", error);
+        res.status(500).send("Error serving frontend");
+      }
+    });
+  } catch (error) {
+    console.error("Error setting up static file serving:", error);
+  }
+}
