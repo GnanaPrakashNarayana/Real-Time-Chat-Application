@@ -1,6 +1,6 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -8,7 +8,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { Check, CheckCheck, FileText, Download } from "lucide-react";
+import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
 
 const ChatContainer = () => {
   const {
@@ -43,6 +43,46 @@ const ChatContainer = () => {
       markMessagesAsRead();
     }
   }, [messages, markMessagesAsRead]);
+
+  // Helper function to safely render document bubbles
+  const renderDocumentBubble = (document) => {
+    if (!document) return null;
+    
+    try {
+      return (
+        <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg mb-2 w-full">
+          <File className="size-5 flex-shrink-0" />
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="text-sm font-medium truncate max-w-[200px]">
+              {document.name || "Untitled Document"}
+            </p>
+            <p className="text-xs opacity-70">
+              {document.size ? `${(document.size / 1024).toFixed(2)} KB` : "Document"}
+            </p>
+          </div>
+          {document.url && (
+            <a 
+              href={document.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              download={document.name}
+              className="btn btn-circle btn-sm flex-shrink-0"
+              title="Download"
+            >
+              <Download className="size-3" />
+            </a>
+          )}
+        </div>
+      );
+    } catch (error) {
+      console.error("Error rendering document:", error);
+      return (
+        <div className="p-3 bg-base-200 rounded-lg mb-2 text-sm">
+          Document attachment
+        </div>
+      );
+    }
+  };
 
   if (isMessagesLoading) {
     return (
@@ -95,7 +135,12 @@ const ChatContainer = () => {
                 </span>
               )}
             </div>
-            <div className="chat-bubble flex flex-col">
+            
+            <div className="chat-bubble">
+              {/* Document display - with robust error handling */}
+              {message.document && renderDocumentBubble(message.document)}
+              
+              {/* Image attachment */}
               {message.image && (
                 <img
                   src={message.image}
@@ -104,32 +149,13 @@ const ChatContainer = () => {
                 />
               )}
               
-              {/* Document display - Updated to ensure proper rendering */}
-              {message.document && (
-                <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg mb-2">
-                  <FileText className="size-5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{message.document.name || "Document"}</p>
-                    <p className="text-xs opacity-70">
-                      {message.document.size ? ((message.document.size / 1024).toFixed(2) + " KB") : "Unknown size"}
-                    </p>
-                  </div>
-                  {message.document.url && (
-                    <a 
-                      href={message.document.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      download={message.document.name}
-                      className="btn btn-circle btn-xs"
-                    >
-                      <Download className="size-3" />
-                    </a>
-                  )}
-                </div>
-              )}
-              
               {/* Message text content */}
               {message.text && <p>{message.text}</p>}
+              
+              {/* Fallback for empty messages */}
+              {!message.text && !message.image && !message.document && (
+                <p className="text-xs italic opacity-50">Attachment</p>
+              )}
             </div>
             
             {/* Message Reactions */}
