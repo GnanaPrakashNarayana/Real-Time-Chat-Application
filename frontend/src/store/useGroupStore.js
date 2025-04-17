@@ -193,35 +193,34 @@ export const useGroupStore = create((set, get) => ({
   // Vote on a poll
   // In useGroupStore.js
   // In useGroupStore.js
+  // In useGroupStore.js - Improve the votePoll function to properly update state
   votePoll: async (voteData) => {
     try {
       const res = await axiosInstance.post("/polls/vote", voteData);
       
-      // Ensure data is properly formatted before updating state
-      const safeOptions = Array.isArray(res.data?.options) 
-        ? res.data.options.map(option => ({
-            ...option,
-            votes: Array.isArray(option.votes) ? option.votes : []
-          }))
-        : [];
+      // Make sure the poll data is properly structured before updating state
+      if (!res.data || !res.data.options) {
+        console.error("Invalid poll data received:", res.data);
+        return false;
+      }
       
-      const safePoll = {
-        ...res.data,
-        options: safeOptions
-      };
-      
-      // Update the poll in the messages - force a re-render by creating new objects
+      // Explicitly update the state with proper vote counts
       set(state => ({
         groupMessages: state.groupMessages.map(msg => {
-          if (msg.poll && msg.poll._id === safePoll._id) {
+          if (msg.poll && msg.poll._id === voteData.pollId) {
+            // Create a brand new poll object to force re-render
+            const updatedPoll = {
+              ...res.data,
+              options: res.data.options.map(option => ({
+                ...option,
+                // Ensure votes is always an array
+                votes: Array.isArray(option.votes) ? option.votes : []
+              }))
+            };
+            
             return { 
               ...msg, 
-              poll: {
-                ...safePoll,
-                // Force to be seen as a new object to trigger re-render
-                _id: safePoll._id,
-                timestamp: Date.now()
-              }
+              poll: updatedPoll
             };
           }
           return msg;

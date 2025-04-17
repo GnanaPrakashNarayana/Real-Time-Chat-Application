@@ -49,26 +49,36 @@ const PollDisplay = ({ poll, messageId }) => {
   }, [poll, authUser]);
   
   const calculateTotalVotes = () => {
-    if (!Array.isArray(poll.options)) return 0;
+    if (!poll || !Array.isArray(poll.options)) return 0;
     
-    return poll.options.reduce((sum, option) => {
-      const votesCount = Array.isArray(option.votes) ? option.votes.length : 0;
-      return sum + votesCount;
-    }, 0);
+    // Count votes more carefully
+    let count = 0;
+    for (const option of poll.options) {
+      // Make sure we're counting actual votes
+      if (option.votes && Array.isArray(option.votes)) {
+        count += option.votes.length;
+      }
+    }
+    return count;
   };
   
   const totalVotes = calculateTotalVotes();
   
   const getPercentage = (votes) => {
-    // Get vote count with proper type checking
-    const voteCount = Array.isArray(votes) ? votes.length : 0;
+    // Safely handle votes array
+    const voteCount = votes && Array.isArray(votes) ? votes.length : 0;
     
-    // If no votes, return 0%
-    if (totalVotes === 0) return 0;
+    // Important: Get freshly calculated total votes
+    const currentTotalVotes = calculateTotalVotes();
     
-    // Calculate percentage and round to avoid floating point issues
-    return Math.round((voteCount / totalVotes) * 100);
+    // If there are no votes at all, return 0
+    if (currentTotalVotes === 0) return 0;
+    
+    // Calculate percentage, ensure it's an integer
+    return Math.round((voteCount / currentTotalVotes) * 100);
   };
+  
+  
   
 // After handling the vote submission
 const handleVote = async () => {
