@@ -9,6 +9,7 @@ import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
 import PollDisplay from "./polls/PollDisplay";
+import SmartReplySuggestions from "./SmartReplySuggestions"; // Import the new component
 import { FileText, Download } from "lucide-react";
 
 const GroupChatContainer = () => {
@@ -20,6 +21,10 @@ const GroupChatContainer = () => {
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
     reactToGroupMessage,
+    sendGroupMessage,
+    smartReplies,
+    isLoadingSmartReplies,
+    getSmartReplies,
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
@@ -38,6 +43,28 @@ const GroupChatContainer = () => {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [groupMessages]);
+
+  // Find the last message from other users to generate smart replies
+  useEffect(() => {
+    if (groupMessages && groupMessages.length > 0) {
+      // Get the last message from another person
+      const lastOtherUserMessage = [...groupMessages]
+        .reverse()
+        .find(msg => msg.senderId._id !== authUser._id);
+        
+      // If we found a message and it has text, generate smart replies
+      if (lastOtherUserMessage?.text) {
+        getSmartReplies(lastOtherUserMessage.text);
+      }
+    }
+  }, [groupMessages, authUser._id, getSmartReplies]);
+
+  // Handler for sending a smart reply
+  const handleSendSmartReply = (text) => {
+    if (!text) return;
+    
+    sendGroupMessage({ text });
+  };
 
   if (isLoadingMessages) {
     return (
@@ -173,6 +200,13 @@ const GroupChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
+
+      {/* Smart Reply Suggestions */}
+      <SmartReplySuggestions
+        suggestions={smartReplies}
+        isLoading={isLoadingSmartReplies}
+        onSendReply={handleSendSmartReply}
+      />
 
       <GroupMessageInput />
     </div>

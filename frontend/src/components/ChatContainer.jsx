@@ -7,6 +7,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import AudioPlayer from "./AudioPlayer";
+import SmartReplySuggestions from "./SmartReplySuggestions"; // Import the new component
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
@@ -22,6 +23,9 @@ const ChatContainer = () => {
     markMessagesAsRead,
     typingUsers,
     reactToMessage,
+    smartReplies,
+    isLoadingSmartReplies,
+    sendMessage,
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
@@ -44,6 +48,28 @@ const ChatContainer = () => {
       markMessagesAsRead();
     }
   }, [messages, markMessagesAsRead]);
+
+  // Find the last message from the other user to generate smart replies
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      // Get the last message from the other person
+      const lastOtherUserMessage = [...messages]
+        .reverse()
+        .find(msg => msg.senderId === selectedUser._id);
+        
+      // If we found a message and it has text, generate smart replies
+      if (lastOtherUserMessage?.text) {
+        useChatStore.getState().getSmartReplies(lastOtherUserMessage.text);
+      }
+    }
+  }, [messages, selectedUser._id]);
+
+  // Handler for sending a smart reply
+  const handleSendSmartReply = (text) => {
+    if (!text) return;
+    
+    sendMessage({ text });
+  };
 
   // Helper function to safely render document bubbles
   const renderDocumentBubble = (document) => {
@@ -200,6 +226,13 @@ const ChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
+
+      {/* Smart Reply Suggestions */}
+      <SmartReplySuggestions
+        suggestions={smartReplies}
+        isLoading={isLoadingSmartReplies}
+        onSendReply={handleSendSmartReply}
+      />
 
       <MessageInput />
     </div>

@@ -16,6 +16,8 @@ import groupRoutes from "./routes/group.route.js";
 
 import pollRoutes from "./routes/poll.route.js";
 
+
+import smartReplyRoutes from "./routes/smartReply.route.js";
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -59,6 +61,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/polls", pollRoutes);
+app.use("/api/smart-replies", smartReplyRoutes);
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
