@@ -1,6 +1,5 @@
 import { generateSmartRepliesByIntent } from "../lib/messageAnalysis.js";
 import { analyzeConversationContext, getTopicSpecificReplies } from "../lib/conversationContext.js";
-import { generateSmartReplies } from "../services/aiService.js";
 // backend/src/controllers/smartReply.controller.js
 
 // Enhanced message analysis and smart reply generation
