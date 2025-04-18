@@ -1,151 +1,204 @@
-// Helper function to get contextual replies based on message content
+import { generateSmartRepliesByIntent } from "../lib/messageAnalysis.js";
+
 // backend/src/controllers/smartReply.controller.js
 
-// Helper function to get contextual replies based on message content
+// Enhanced message analysis and smart reply generation
 const generateSmartReplies = (message) => {
-    if (!message) return [];
-    
-    const messageText = message.toLowerCase();
-    
-    // Default responses if no specific pattern matches
-    const defaultReplies = [
-      "Sounds good!",
-      "Thanks for sharing.",
-      "That's interesting.",
-      "Got it.",
-      "I see."
-    ];
-    
-    // Checking for common patterns in messages and providing contextual replies
-    if (messageText.includes('hello') || messageText.includes('hi') || messageText.includes('hey')) {
-      return [
-        "Hi there! How are you?",
-        "Hello! Nice to hear from you.",
-        "Hey! What's up?"
-      ];
-    }
-    
-    if (messageText.includes('how are you') || messageText.includes('how\'s it going')) {
-      return [
-        "I'm doing well, thanks for asking!",
-        "All good here, how about you?",
-        "Great! How about yourself?"
-      ];
-    }
-    
-    if (messageText.includes('thank')) {
-      return [
-        "You're welcome!",
-        "No problem at all.",
-        "Happy to help!"
-      ];
-    }
-    
-    if (messageText.includes('sorry')) {
-      return [
-        "No worries!",
-        "It's alright.",
-        "Don't worry about it."
-      ];
-    }
-    
-    if (messageText.includes('bye') || messageText.includes('goodbye') || messageText.includes('see you')) {
-      return [
-        "Bye! Talk to you later.",
-        "See you soon!",
-        "Take care!"
-      ];
-    }
-    
-    if (messageText.includes('time')) {
-      return [
-        "I'm flexible with time.",
-        "What time works for you?",
-        "I'm available whenever."
-      ];
-    }
-    
-    if (messageText.includes('help') || messageText.includes('support')) {
-      return [
-        "I'd be happy to help!",
-        "What do you need help with?",
-        "Let me know how I can assist."
-      ];
-    }
-    
-    if (messageText.includes('meeting') || messageText.includes('call')) {
-      return [
-        "I'm available for a meeting.",
-        "Let's schedule a call.",
-        "When would be a good time?"
-      ];
-    }
-    
-    if (messageText.includes('weekend') || messageText.includes('holiday')) {
-      return [
-        "Hope you have a great time!",
-        "Enjoy your break!",
-        "Sounds fun!"
-      ];
-    }
-    
-    if (messageText.includes('project') || messageText.includes('work')) {
-      return [
-        "How's the project coming along?",
-        "Need any help with that?",
-        "Sounds like good progress."
-      ];
-    }
-    
-    if (messageText.includes('agree')) {
-      return [
-        "Glad we're on the same page.",
-        "I think so too.",
-        "Absolutely!"
-      ];
-    }
-    
-    if (messageText.includes('disagree') || messageText.includes('not sure')) {
-      return [
-        "I understand your perspective.",
-        "Let's discuss this further.",
-        "I see your point."
-      ];
-    }
-    
-    if (messageText.includes('idea') || messageText.includes('suggestion')) {
-      return [
-        "That's a great idea!",
-        "I like your thinking.",
-        "Let's explore that."
-      ];
-    }
-    
-    if (messageText.includes('question')) {
-      return [
-        "Happy to answer.",
-        "What would you like to know?",
-        "I'll try my best to help."
-      ];
-    }
-    
-    // If no specific pattern matches, return the default replies
-    return defaultReplies;
+  if (!message) return [];
+  
+  const messageText = message.toLowerCase().trim();
+  
+  // Message type identification patterns
+  const patterns = {
+    greeting: /\b(hi|hello|hey|greetings|howdy)\b/i,
+    howAreYou: /\b(how are you|how've you been|how('s| is| are) (it going|things|life)|what's up|how('s| is) everything|how('s| have) you been)\b/i,
+    thanks: /\b(thank(s| you)|appreciate|grateful|gracias|thx)\b/i,
+    apology: /\b(sorry|apologize|forgive|regret|apologies)\b/i,
+    goodbye: /\b(bye|goodbye|see you|talk (to you|later)|catch you later|farewell|until next time|later)\b/i,
+    timeQuery: /\b(when|what time|schedule|available|free|meet|meeting|call)\b/i,
+    helpRequest: /\b(help|assist|support|guide|how (to|do|can)|can you|would you|advice|advise)\b/i,
+    opinion: /\b(what (do|should|would|could) you think|your (thoughts|opinion|take)|how (do|would|could) you feel)\b/i,
+    invitation: /\b(join|come|attend|invite|party|event|meeting|gathering)\b/i,
+    compliment: /\b(nice|good|great|awesome|excellent|amazing|wonderful|cool|impressive|beautiful|pretty|handsome)\b/i,
+    agreement: /\b(agree|yes|absolutely|definitely|certainly|indeed|exactly|correct)\b/i,
+    disagreement: /\b(disagree|no|nope|not really|i don't think so|incorrect)\b/i,
+    suggestion: /\b(suggest|recommend|idea|proposal|how about|perhaps|maybe|consider)\b/i
   };
   
-  export const getSmartReplies = async (req, res) => {
-    try {
-      const { message } = req.body;
-      
-      if (!message) {
-        return res.status(400).json({ error: "Message is required" });
-      }
-      
-      const smartReplies = generateSmartReplies(message);
-      
-      res.status(200).json({ replies: smartReplies });
-    } catch (error) {
-      console.error("Error in getSmartReplies controller:", error);
-      res.status(500).json({ error: "Internal server error" });
+  // Helper function to check message against a pattern
+  const matchesPattern = (pattern) => pattern.test(messageText);
+  
+  // Specific reply generator based on message context
+  if (matchesPattern(patterns.howAreYou)) {
+    return [
+      "I'm doing great, thanks for asking!",
+      "Been busy but good, how about you?",
+      "Not bad at all, thanks!",
+      "Pretty well, thanks for asking!",
+      "All good here, how are you?"
+    ];
+  }
+  
+  if (matchesPattern(patterns.greeting)) {
+    return [
+      "Hi there! How are you?",
+      "Hello! Great to hear from you.",
+      "Hey! What's up?",
+      "Hi! How's your day going?",
+      "Hello! How have you been?"
+    ];
+  }
+  
+  if (matchesPattern(patterns.thanks)) {
+    return [
+      "You're welcome!",
+      "Happy to help!",
+      "No problem at all!",
+      "Anytime!",
+      "My pleasure!"
+    ];
+  }
+  
+  if (matchesPattern(patterns.apology)) {
+    return [
+      "No worries at all!",
+      "It's completely fine.",
+      "Don't worry about it!",
+      "That's alright, no problem.",
+      "No need to apologize!"
+    ];
+  }
+  
+  if (matchesPattern(patterns.goodbye)) {
+    return [
+      "Talk to you later!",
+      "Bye! Have a great day!",
+      "See you soon!",
+      "Take care!",
+      "Catch you later!"
+    ];
+  }
+  
+  if (matchesPattern(patterns.timeQuery)) {
+    return [
+      "I'm free tomorrow afternoon.",
+      "How about next week?",
+      "I can meet anytime Thursday.",
+      "What time works for you?",
+      "My schedule is flexible."
+    ];
+  }
+  
+  if (matchesPattern(patterns.helpRequest)) {
+    return [
+      "I'd be happy to help!",
+      "What can I help you with exactly?",
+      "Sure, I can assist with that.",
+      "I'll do my best to help.",
+      "Let me know what you need."
+    ];
+  }
+  
+  if (matchesPattern(patterns.opinion)) {
+    return [
+      "I think that sounds good.",
+      "That's an interesting perspective.",
+      "I'd need to think about that more.",
+      "I see both sides of that.",
+      "That makes sense to me."
+    ];
+  }
+  
+  if (matchesPattern(patterns.invitation)) {
+    return [
+      "I'd love to join!",
+      "Thanks for the invite!",
+      "What time should I be there?",
+      "Sounds fun, count me in!",
+      "I'll check my schedule and let you know."
+    ];
+  }
+  
+  if (matchesPattern(patterns.compliment)) {
+    return [
+      "Thank you so much!",
+      "That's very kind of you!",
+      "I appreciate that!",
+      "Thanks! That means a lot.",
+      "You're too kind!"
+    ];
+  }
+  
+  if (matchesPattern(patterns.agreement)) {
+    return [
+      "Glad we're on the same page!",
+      "I think so too.",
+      "Absolutely!",
+      "Exactly my thoughts!",
+      "Couldn't agree more."
+    ];
+  }
+  
+  if (matchesPattern(patterns.disagreement)) {
+    return [
+      "I see your point.",
+      "Let's discuss this further.",
+      "I understand your perspective.",
+      "We might need to compromise.",
+      "I respect your opinion."
+    ];
+  }
+  
+  if (matchesPattern(patterns.suggestion)) {
+    return [
+      "That's a great idea!",
+      "I like your thinking.",
+      "That could work well.",
+      "Let's try that approach.",
+      "I'm open to your suggestion."
+    ];
+  }
+  
+  // Analyze content with basic NLP
+  const wordsInMessage = messageText.split(/\s+/);
+  const questionWords = ['what', 'when', 'where', 'who', 'why', 'how', 'is', 'are', 'was', 'were', 'will', 'would', 'can', 'could'];
+  const isQuestion = questionWords.some(word => wordsInMessage.includes(word)) || messageText.endsWith('?');
+  
+  // Default contextual replies based on message characteristics
+  if (isQuestion) {
+    return [
+      "Let me think about that.",
+      "That's a good question.",
+      "I'm not quite sure, honestly.",
+      "Interesting question!",
+      "I'll have to consider that."
+    ];
+  }
+  
+  // Default engagement responses
+  return [
+    "Thanks for sharing that.",
+    "I appreciate your message.",
+    "I understand.",
+    "Interesting perspective.",
+    "Tell me more about that."
+  ];
+};
+
+export const getSmartReplies = async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: "Message is required" });
     }
-  };
+    
+    // Use the advanced message analysis
+    const smartReplies = generateSmartRepliesByIntent(message);
+    
+    res.status(200).json({ replies: smartReplies });
+  } catch (error) {
+    console.error("Error in getSmartReplies controller:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

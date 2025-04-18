@@ -346,13 +346,23 @@ export const useChatStore = create((set, get) => ({
   setSelectedUser: (selectedUser) => set({ selectedUser }),
   
   // Smart Reply functions
+  // In frontend/src/store/useChatStore.js
+  // Update the smart reply portion
+
+  // Smart Reply functions
   getSmartReplies: async (message) => {
-    if (!message) return;
+    if (!message || typeof message !== 'string' || message.trim().length < 2) return;
     
     set({ isLoadingSmartReplies: true });
     try {
       const res = await axiosInstance.post("/smart-replies/generate", { message });
-      set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
+      
+      // Verify we received valid data
+      if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
+        set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
+      } else {
+        set({ smartReplies: [], isLoadingSmartReplies: false });
+      }
     } catch (error) {
       console.error("Error fetching smart replies:", error);
       set({ smartReplies: [], isLoadingSmartReplies: false });

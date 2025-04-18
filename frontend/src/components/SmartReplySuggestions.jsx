@@ -1,7 +1,8 @@
 // frontend/src/components/SmartReplySuggestions.jsx
 import { Sparkles } from "lucide-react";
+import { memo } from "react";
 
-const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = false }) => {
+const SmartReplySuggestions = memo(({ suggestions = [], onSendReply, isLoading = false }) => {
   // If there are no suggestions and not loading, don't render anything
   if ((!suggestions || suggestions.length === 0) && !isLoading) {
     return null;
@@ -21,8 +22,8 @@ const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = fals
             <div key={i} className="h-8 bg-base-200/70 rounded-full animate-pulse w-24"></div>
           ))
         ) : (
-          // Suggestions
-          suggestions.map((suggestion, index) => (
+          // Suggestions - limit to 5 for better mobile display
+          suggestions.slice(0, 5).map((suggestion, index) => (
             <button
               key={index}
               className="px-3 py-1.5 text-sm bg-base-200 hover:bg-primary/10 hover:text-primary rounded-full transition-colors"
@@ -35,6 +36,8 @@ const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = fals
       </div>
     </div>
   );
-};
+});
+
+SmartReplySuggestions.displayName = 'SmartReplySuggestions';
 
 export default SmartReplySuggestions;
