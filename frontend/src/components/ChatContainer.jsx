@@ -7,12 +7,13 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import AudioPlayer from "./AudioPlayer";
-import SmartReplySuggestions from "./SmartReplySuggestions"; // Import the new component
+import SmartReplySuggestions from "./SmartReplySuggestions"; 
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
 
 const ChatContainer = () => {
+  const chatStore = useChatStore();
   const {
     messages,
     getMessages,
@@ -27,6 +28,7 @@ const ChatContainer = () => {
     isLoadingSmartReplies,
     sendMessage,
   } = useChatStore();
+  
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
 
@@ -59,10 +61,10 @@ const ChatContainer = () => {
         
       // If we found a message and it has text, generate smart replies
       if (lastOtherUserMessage?.text) {
-        useChatStore.getState().getSmartReplies(lastOtherUserMessage.text);
+        chatStore.getSmartReplies(lastOtherUserMessage.text);
       }
     }
-  }, [messages, selectedUser._id]);
+  }, [messages, selectedUser._id, chatStore]);
 
   // Handler for sending a smart reply
   const handleSendSmartReply = (text) => {
@@ -238,4 +240,5 @@ const ChatContainer = () => {
     </div>
   );
 };
+
 export default ChatContainer;

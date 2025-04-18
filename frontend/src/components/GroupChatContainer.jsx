@@ -9,10 +9,11 @@ import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
 import PollDisplay from "./polls/PollDisplay";
-import SmartReplySuggestions from "./SmartReplySuggestions"; // Import the new component
+import SmartReplySuggestions from "./SmartReplySuggestions"; 
 import { FileText, Download } from "lucide-react";
 
 const GroupChatContainer = () => {
+  const groupStore = useGroupStore();
   const {
     groupMessages,
     selectedGroup,
@@ -24,7 +25,6 @@ const GroupChatContainer = () => {
     sendGroupMessage,
     smartReplies,
     isLoadingSmartReplies,
-    getSmartReplies,
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
@@ -54,10 +54,10 @@ const GroupChatContainer = () => {
         
       // If we found a message and it has text, generate smart replies
       if (lastOtherUserMessage?.text) {
-        getSmartReplies(lastOtherUserMessage.text);
+        groupStore.getSmartReplies(lastOtherUserMessage.text);
       }
     }
-  }, [groupMessages, authUser._id, getSmartReplies]);
+  }, [groupMessages, authUser._id, groupStore]);
 
   // Handler for sending a smart reply
   const handleSendSmartReply = (text) => {
