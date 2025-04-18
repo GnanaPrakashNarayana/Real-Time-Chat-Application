@@ -3,6 +3,8 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
+import { createSafeSocket } from "../lib/safeSocket";
+
 // Token storage functions
 const setToken = (token) => {
   localStorage.setItem('authToken', token);
@@ -118,14 +120,18 @@ export const useAuthStore = create((set, get) => ({
     if (!authUser) return;
     
     // If already connected, don't reconnect
-    if (get().socket?.connected) {
+    if (get().socket?._socket?.connected) {
       console.log("Socket already connected");
       return;
     }
   
     // Disconnect any existing socket first
-    if (get().socket) {
-      get().socket.disconnect();
+    if (get().socket && get().socket._socket) {
+      try {
+        get().socket._socket.disconnect();
+      } catch (err) {
+        console.error("Error disconnecting socket:", err);
+      }
     }
   
     const token = getToken();
@@ -133,42 +139,62 @@ export const useAuthStore = create((set, get) => ({
   
     console.log("Connecting to socket...");
     
-    // Add reconnection options
-    const socket = io(BASE_URL, {
-      query: {
-        token: token
-      },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-    
-    // Set socket before adding listeners to avoid race conditions
-    set({ socket });
-    
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
-    
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-    
-    socket.on("getOnlineUsers", (userIds) => {
-      console.log("Online users:", userIds);
-      set({ onlineUsers: userIds });
-    });
-    
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-    });
+    try {
+      // Add reconnection options
+      const rawSocket = io(BASE_URL, {
+        query: {
+          token: token
+        },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
+      });
+      
+      // Create a safe wrapper around the raw socket
+      const safeSocket = createSafeSocket(rawSocket);
+      
+      // Set socket before adding listeners to avoid race conditions
+      set({ socket: safeSocket });
+      
+      // Use safe event handlers
+      safeSocket.on("connect", () => {
+        console.log("Socket connected:", safeSocket.id);
+      });
+      
+      safeSocket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+      });
+      
+      safeSocket.on("getOnlineUsers", (userIds) => {
+        console.log("Online users:", userIds);
+        if (Array.isArray(userIds)) {
+          set({ onlineUsers: userIds });
+        } else {
+          console.warn("Received non-array online users data:", userIds);
+          set({ onlineUsers: [] });
+        }
+      });
+      
+      safeSocket.on("disconnect", (reason) => {
+        console.log("Socket disconnected:", reason);
+      });
+      
+    } catch (error) {
+      console.error("Error setting up socket connection:", error);
+    }
   },
+  
   
   disconnectSocket: () => {
     const socket = get().socket;
-    if (socket) {
-      socket.disconnect();
-      set({ socket: null });
+    if (socket && socket._socket) {
+      try {
+        socket._socket.disconnect();
+        set({ socket: null });
+      } catch (error) {
+        console.error("Error disconnecting socket:", error);
+        set({ socket: null }); // Force clear even if error
+      }
     }
   }
 }));
