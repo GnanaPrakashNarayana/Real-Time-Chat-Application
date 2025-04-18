@@ -143,9 +143,6 @@ export const useAuthStore = create((set, get) => ({
       reconnectionDelay: 1000
     });
     
-    // Save the original set function reference
-    const setStore = set;
-    
     // Set socket before adding listeners to avoid race conditions
     set({ socket });
     
@@ -159,11 +156,19 @@ export const useAuthStore = create((set, get) => ({
     
     socket.on("getOnlineUsers", (userIds) => {
       console.log("Online users:", userIds);
-      setStore({ onlineUsers: userIds }); // Use the preserved reference
+      set({ onlineUsers: userIds });
     });
     
     socket.on("disconnect", (reason) => {
       console.log("Socket disconnected:", reason);
     });
+  },
+  
+  disconnectSocket: () => {
+    const socket = get().socket;
+    if (socket) {
+      socket.disconnect();
+      set({ socket: null });
+    }
   }
 }));

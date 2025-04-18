@@ -52,7 +52,7 @@ io.on("connection", (socket) => {
 
   // Add typing indicator event handlers
   socket.on("typing", (data) => {
-    console.log("Typing event received:", data); // Add this line
+    console.log("Typing event received:", data); 
     const receiverSocketId = getReceiverSocketId(data.receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("userTyping", {
@@ -77,9 +77,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("getOnlineUsers", (userIds) => {
-    console.log("Online users received:", userIds); // Add this line
-    //set({ onlineUsers: userIds });  // This shouldn't be here
+    console.log("Online users received:", userIds);
   });
 });
-
 export { io, app, server };
