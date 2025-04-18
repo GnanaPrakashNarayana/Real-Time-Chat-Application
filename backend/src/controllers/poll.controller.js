@@ -77,61 +77,88 @@ export const createPoll = async (req, res) => {
 /*****************************************************************************************
  *  VOTE ON A POLL                                                                       *
  *****************************************************************************************/
+// Update the votePoll function in backend/src/controllers/poll.controller.js
 export const votePoll = async (req, res) => {
-  try {
-    const { pollId, optionId } = req.body;
-    const userId = req.user._id;
-
-    const poll = await Poll.findById(pollId);
-    if (!poll) return res.status(404).json({ message: "Poll not found" });
-    if (!poll.isActive) return res.status(400).json({ message: "This poll is no longer active" });
-
-    // 1️⃣ Remove any previous vote by this user
-    poll.options.forEach((opt) => {
-      opt.votes = opt.votes.filter((v) => v.toString() !== userId.toString());
-    });
-
-    // 2️⃣ Add the new vote
-    const option = poll.options.id(optionId);
-    if (!option) return res.status(404).json({ message: "Option not found" });
-    option.votes.push(userId);
-
-    // ✅ Mark the nested path as modified so Mongoose actually saves the change
-    poll.markModified("options");
-    await poll.save();
-
-    // Grab associated message for socket payload
-    const message = await GroupMessage.findById(poll.messageId);
-    if (!message) return res.status(404).json({ message: "Associated message not found" });
-
-    // Hydrate poll for response / socket
-    const populatedPoll = await Poll.findById(poll._id)
-      .populate("creator", "fullName profilePic")
-      .populate("options.votes", "fullName profilePic");
-
-    const group = await Group.findById(poll.groupId);
-    if (!group) return res.status(404).json({ message: "Group not found" });
-
-    // Broadcast vote to all members
-    group.members.forEach((memberId) => {
-      const socketId = getReceiverSocketId(memberId);
-      if (socketId) {
-        io.to(socketId).emit("pollVote", {
-          poll: populatedPoll,
-          voter: { _id: userId, optionId },
-          groupId: group._id,
-          messageId: message._id,
-        });
+    try {
+      const { pollId, optionId } = req.body;
+      const userId = req.user._id;
+  
+      console.log(`Processing vote: User ${userId} voting for option ${optionId} in poll ${pollId}`);
+  
+      const poll = await Poll.findById(pollId);
+      if (!poll) return res.status(404).json({ message: "Poll not found" });
+      if (!poll.isActive) return res.status(400).json({ message: "This poll is no longer active" });
+  
+      // 1️⃣ Remove any previous vote by this user
+      poll.options.forEach((opt) => {
+        opt.votes = opt.votes.filter((v) => v.toString() !== userId.toString());
+      });
+  
+      // 2️⃣ Add the new vote
+      const option = poll.options.id(optionId);
+      if (!option) return res.status(404).json({ message: "Option not found" });
+      option.votes.push(userId);
+  
+      // ✅ Mark the nested path as modified so Mongoose actually saves the change
+      poll.markModified("options");
+      await poll.save();
+  
+      // Grab associated message for socket payload
+      const message = await GroupMessage.findById(poll.messageId);
+      if (!message) return res.status(404).json({ message: "Associated message not found" });
+  
+      // Hydrate poll for response / socket
+      const populatedPoll = await Poll.findById(poll._id)
+        .populate("creator", "fullName profilePic")
+        .populate("options.votes", "fullName profilePic");
+  
+      // Additional check to ensure we have valid data before sending
+      if (!populatedPoll) {
+        console.error("Failed to retrieve populated poll after save");
+        return res.status(500).json({ message: "Failed to retrieve updated poll" });
       }
-    });
-
-    res.status(200).json(populatedPoll);
-  } catch (error) {
-    console.error("Error in votePoll controller:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
-
+  
+      // Log the populated poll for debugging
+      console.log("Populated poll to return:", {
+        id: populatedPoll._id,
+        options: populatedPoll.options.map(o => ({
+          id: o._id,
+          text: o.text,
+          voteCount: o.votes.length
+        }))
+      });
+  
+      const group = await Group.findById(poll.groupId);
+      if (!group) return res.status(404).json({ message: "Group not found" });
+  
+      // Format the poll to ensure consistent data structure before sending
+      const formattedPoll = {
+        ...populatedPoll.toObject(),
+        options: populatedPoll.options.map(opt => ({
+          ...opt.toObject(),
+          votes: Array.isArray(opt.votes) ? opt.votes : []
+        }))
+      };
+  
+      // Broadcast vote to all members
+      group.members.forEach((memberId) => {
+        const socketId = getReceiverSocketId(memberId);
+        if (socketId) {
+          io.to(socketId).emit("pollVote", {
+            poll: formattedPoll,
+            voter: { _id: userId, optionId },
+            groupId: group._id,
+            messageId: message._id,
+          });
+        }
+      });
+  
+      res.status(200).json(formattedPoll);
+    } catch (error) {
+      console.error("Error in votePoll controller:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
 /*****************************************************************************************
  *  END A POLL                                                                           *
  *****************************************************************************************/

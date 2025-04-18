@@ -15,7 +15,7 @@ const PollDisplay = ({ poll, messageId }) => {
     );
   }
 
-  // Normalise incoming poll
+  // Normalize incoming poll
   const safePoll = {
     ...poll,
     options: Array.isArray(poll.options) ? poll.options : [],
@@ -29,39 +29,45 @@ const PollDisplay = ({ poll, messageId }) => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedOption, setExpandedOption] = useState(null);
+  const [totalVotes, setTotalVotes] = useState(0);
 
-  // ⬇ keep total vote count in state so UI updates when store/socket refreshes
-  const calculateTotalVotes = () =>
-    safePoll.options.reduce(
-      (sum, option) =>
-        sum + (Array.isArray(option.votes) ? option.votes.length : 0),
+  // Calculate total votes
+  useEffect(() => {
+    if (!safePoll || !safePoll.options) return;
+    
+    const total = safePoll.options.reduce(
+      (sum, option) => sum + (Array.isArray(option.votes) ? option.votes.length : 0),
       0
     );
-
-  const [totalVotes, setTotalVotes] = useState(() => calculateTotalVotes());
+    
+    setTotalVotes(total);
+    console.log("Total votes calculated:", total, safePoll.options);
+  }, [safePoll]);
 
   // Has current user already voted?
   useEffect(() => {
     if (safePoll.options && authUser) {
+      let foundVote = false;
       for (const option of safePoll.options) {
         if (
           Array.isArray(option.votes) &&
           option.votes.some((v) => v?._id === authUser._id)
         ) {
           setSelectedOption(option._id);
+          foundVote = true;
           break;
         }
       }
+      
+      if (!foundVote && selectedOption) {
+        setSelectedOption(null);
+      }
     }
-  }, [safePoll.options, authUser]);
-
-  // Refresh total vote tally any time the poll object is replaced by the store
-  useEffect(() => {
-    setTotalVotes(calculateTotalVotes());
-  }, [safePoll]);
+  }, [safePoll.options, authUser, selectedOption]);
 
   const getPercentage = (votes) => {
-    const voteCount = Array.isArray(votes) ? votes.length : 0;
+    if (!votes || !Array.isArray(votes)) return 0;
+    const voteCount = votes.length;
     return totalVotes === 0 ? 0 : Math.round((voteCount / totalVotes) * 100);
   };
 
@@ -69,8 +75,14 @@ const PollDisplay = ({ poll, messageId }) => {
     if (!selectedOption) return;
     setIsSubmitting(true);
     try {
-      await votePoll({ pollId: safePoll._id, optionId: selectedOption });
-      // Store/socket will push updated poll; useEffect will recalc totalVotes
+      const success = await votePoll({ 
+        pollId: safePoll._id, 
+        optionId: selectedOption 
+      });
+      
+      if (!success) {
+        toast.error("Failed to submit your vote");
+      }
     } catch (error) {
       console.error("Error voting on poll:", error);
       toast.error("Failed to submit your vote");
@@ -112,6 +124,11 @@ const PollDisplay = ({ poll, messageId }) => {
       {/* Options list */}
       <div className="space-y-2">
         {safePoll.options.map((option) => {
+          if (!option || !option._id) {
+            console.error("Invalid option data:", option);
+            return null;
+          }
+          
           const safeVotes = Array.isArray(option.votes) ? option.votes : [];
           const percentage = getPercentage(safeVotes);
           const isSelected = selectedOption === option._id;

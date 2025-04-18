@@ -194,38 +194,58 @@ export const useGroupStore = create((set, get) => ({
   // In useGroupStore.js
   // In useGroupStore.js
   // In useGroupStore.js - Improve the votePoll function to properly update state
+  // Update this function in frontend/src/store/useGroupStore.js
   votePoll: async (voteData) => {
     try {
-      const res = await axiosInstance.post("/polls/vote", voteData);
+      // Add some debugging
+      console.log("Submitting vote:", voteData);
       
-      // Make sure the poll data is properly structured before updating state
-      if (!res.data || !res.data.options) {
+      const res = await axiosInstance.post("/polls/vote", voteData);
+      console.log("Vote response:", res.data);
+      
+      // Check if the response contains valid poll data
+      if (!res.data || typeof res.data !== 'object') {
         console.error("Invalid poll data received:", res.data);
         return false;
       }
       
-      // Explicitly update the state with proper vote counts
-      set(state => ({
-        groupMessages: state.groupMessages.map(msg => {
+      // Ensure we have a valid options array with votes arrays
+      const validOptions = (res.data.options || []).map(option => ({
+        ...option,
+        // Always ensure votes is an array - critical for UI rendering
+        votes: Array.isArray(option.votes) ? option.votes : [],
+        _id: option._id || option.id // Handle potential inconsistency in ID field
+      }));
+      
+      // Create a fresh poll object with normalized data
+      const normalizedPoll = {
+        ...res.data,
+        options: validOptions,
+        // Ensure creator is an object even if it's null
+        creator: res.data.creator || { fullName: "Unknown" }
+      };
+      
+      console.log("Normalized poll data:", normalizedPoll);
+      
+      // Update the poll in all messages to ensure UI refresh
+      set(state => {
+        // Find the message containing the poll
+        const updatedMessages = state.groupMessages.map(msg => {
           if (msg.poll && msg.poll._id === voteData.pollId) {
-            // Create a brand new poll object to force re-render
-            const updatedPoll = {
-              ...res.data,
-              options: res.data.options.map(option => ({
-                ...option,
-                // Ensure votes is always an array
-                votes: Array.isArray(option.votes) ? option.votes : []
-              }))
-            };
-            
+            // Replace the entire poll object
             return { 
               ...msg, 
-              poll: updatedPoll
+              poll: normalizedPoll
             };
           }
           return msg;
-        })
-      }));
+        });
+        
+        return { groupMessages: updatedMessages };
+      });
+      
+      // Force an immediate recalculation of the state
+      get().getGroupMessages(get().selectedGroup._id);
       
       return true;
     } catch (error) {
@@ -305,33 +325,55 @@ export const useGroupStore = create((set, get) => ({
     
     // Handle poll votes
    // Inside subscribeToGroupMessages function
+    // Update this socket handler in the subscribeToGroupMessages function in useGroupStore.js
     socket.on("pollVote", (data) => {
-      const { selectedGroup } = get();
+      console.log("Received poll vote socket event:", data);
+      const { selectedGroup, groupMessages } = get();
       
       if (selectedGroup && selectedGroup._id === data.groupId) {
-        // Ensure the poll data has valid structure
-        const safeOptions = Array.isArray(data.poll?.options) 
-          ? data.poll.options.map(option => ({
-              ...option,
-              votes: Array.isArray(option.votes) ? option.votes : []
-            }))
-          : [];
+        // Ensure we always have valid poll data with options and votes arrays
+        if (!data.poll || !Array.isArray(data.poll.options)) {
+          console.error("Invalid poll data in socket event:", data.poll);
+          return;
+        }
         
-        const safePoll = {
+        // Create a normalized poll object
+        const normalizedPoll = {
           ...data.poll,
-          options: safeOptions
+          options: data.poll.options.map(option => ({
+            ...option,
+            // Always ensure votes is an array
+            votes: Array.isArray(option.votes) ? option.votes : [],
+            _id: option._id || option.id // Handle potential inconsistency in ID field
+          })),
+          // Ensure creator is an object even if it's null
+          creator: data.poll.creator || { fullName: "Unknown" }
         };
         
+        console.log("Normalized socket poll data:", normalizedPoll);
+        
+        // Update messages with the new poll data
         set(state => ({
-          groupMessages: state.groupMessages.map(msg => 
-            msg._id === data.messageId
-              ? { ...msg, poll: safePoll }
-              : msg
-          )
+          groupMessages: state.groupMessages.map(msg => {
+            if (msg._id === data.messageId && msg.poll) {
+              // Replace the entire poll object
+              return {
+                ...msg,
+                poll: normalizedPoll
+              };
+            }
+            return msg;
+          })
         }));
+        
+        // Try to force a UI refresh by slightly delaying another update
+        setTimeout(() => {
+          set(state => ({
+            groupMessages: [...state.groupMessages]
+          }));
+        }, 100);
       }
     });
-    
     // Handle poll ended
     socket.on("pollEnded", (data) => {
       const { selectedGroup, groupMessages } = get();
