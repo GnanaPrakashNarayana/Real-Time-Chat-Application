@@ -4,10 +4,10 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-  "start": "node backend/src/index.js",
-  "build": "./build.sh",
-  "dev": "nodemon backend/src/index.js"
-},
+    "start": "node backend/src/index.js",
+    "build": "./build.sh",
+    "dev": "nodemon backend/src/index.js"
+  },
   "keywords": [],
   "author": "",
   "type": "module",
@@ -21,6 +21,7 @@
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.1",
+    "openai": "^4.95.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
