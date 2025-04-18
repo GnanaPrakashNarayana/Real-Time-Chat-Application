@@ -1,12 +1,12 @@
 // Frontend/src/components/polls/PollDisplay.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useGroupStore } from "../../store/useGroupStore";
 import { BarChart3, Check, AlertTriangle, Users } from "lucide-react";
 import toast from "react-hot-toast";
 
 const PollDisplay = ({ poll: initialPoll, messageId }) => {
-  // Basic validation
+  // Basic validation - if poll is invalid, show a fallback UI
   if (!initialPoll || !initialPoll._id) {
     return (
       <div className="w-full bg-base-200/50 p-3 rounded-lg">
@@ -19,7 +19,13 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
   const { votePoll, endPoll } = useGroupStore();
   
   // Keep a local copy of the poll that we can update for immediate UI feedback
-  const [localPoll, setLocalPoll] = useState(initialPoll);
+  const [localPoll, setLocalPoll] = useState(() => ({
+    ...initialPoll,
+    options: Array.isArray(initialPoll.options) ? initialPoll.options : [],
+    creator: initialPoll.creator || { _id: "", fullName: "Unknown" },
+    isActive: initialPoll.isActive !== false
+  }));
+  
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedOption, setExpandedOption] = useState(null);
@@ -27,7 +33,14 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
   
   // Update local poll when the prop changes
   useEffect(() => {
-    setLocalPoll(initialPoll);
+    if (!initialPoll) return;
+    
+    setLocalPoll({
+      ...initialPoll,
+      options: Array.isArray(initialPoll.options) ? initialPoll.options : [],
+      creator: initialPoll.creator || { _id: "", fullName: "Unknown" },
+      isActive: initialPoll.isActive !== false
+    });
   }, [initialPoll]);
   
   // Calculate total votes
@@ -41,7 +54,6 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
       }
     }
     
-    console.log(`Setting total votes to ${total}`);
     setTotalVotes(total);
   }, [localPoll]);
 
@@ -78,55 +90,10 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
     return totalVotes === 0 ? 0 : Math.round((option.votes.length / totalVotes) * 100);
   };
 
-  // Process a vote locally without waiting for server
-  const processLocalVote = (optionId) => {
-    if (!localPoll?.options || !authUser || !optionId) return;
-    
-    // Create a deep copy of the poll to avoid mutations
-    const updatedPoll = {
-      ...localPoll,
-      options: localPoll.options.map(option => {
-        // Make a deep copy of each option
-        const newOption = {
-          ...option,
-          votes: [...(Array.isArray(option.votes) ? option.votes : [])]
-        };
-        
-        // If this is the selected option, add user's vote
-        if (option._id === optionId) {
-          // Check if user already voted for this option
-          const alreadyVoted = newOption.votes.some(vote => {
-            if (typeof vote === 'string') return vote === authUser._id;
-            return vote?._id === authUser._id;
-          });
-          
-          if (!alreadyVoted) {
-            // Add vote - use either the full user object or just the ID
-            newOption.votes.push(authUser);
-          }
-        } else {
-          // Remove user's vote from other options
-          newOption.votes = newOption.votes.filter(vote => {
-            if (typeof vote === 'string') return vote !== authUser._id;
-            return vote?._id !== authUser._id;
-          });
-        }
-        
-        return newOption;
-      })
-    };
-    
-    // Update local state immediately
-    setLocalPoll(updatedPoll);
-  };
-
   // Handle vote submission
   const handleVote = async () => {
     if (!selectedOption) return;
     setIsSubmitting(true);
-    
-    // Apply vote locally first for immediate feedback
-    processLocalVote(selectedOption);
     
     try {
       // Then send to server
@@ -140,7 +107,7 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
       }
     } catch (error) {
       console.error("Error voting:", error);
-      toast.error("Vote recorded locally only. Server error: " + (error.message || "Unknown error"));
+      toast.error("Vote failed: " + (error.message || "Unknown error"));
     } finally {
       setIsSubmitting(false);
     }
@@ -165,17 +132,11 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
   };
 
   // Check if current user is poll creator
-  const isCreator = String(localPoll.creator?._id) === String(authUser?._id);
+  const isCreator = authUser && localPoll.creator && 
+    String(localPoll.creator._id) === String(authUser._id);
   
-  // Debug information
-  console.log("Poll display:", {
-    pollId: localPoll._id,
-    totalVotes,
-    optionCount: localPoll.options.length,
-    voteCounts: localPoll.options.map(o => o.votes?.length || 0),
-    selectedOption,
-    isCreator
-  });
+  // Make sure localPoll.options is always an array
+  const safeOptions = Array.isArray(localPoll.options) ? localPoll.options : [];
 
   return (
     <div className="w-full">
@@ -193,25 +154,15 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
 
       <h3 className="font-medium text-base mb-3">{localPoll.question}</h3>
 
-      {/* Debug info for development */}
-      {process.env.NODE_ENV !== 'production' && (
-        <div className="mb-2 p-1 text-xs font-mono bg-base-300 rounded-md">
-          Total votes: {totalVotes} | User voted: {selectedOption ? 'Yes' : 'No'}
-        </div>
-      )}
-
       {/* Options list */}
       <div className="space-y-2">
-        {localPoll.options.map((option) => {
+        {safeOptions.map((option) => {
           const safeVotes = Array.isArray(option.votes) ? option.votes : [];
           const percentage = getPercentage(option);
           const isSelected = selectedOption === option._id;
-          
-          // Debug info for votes on this option
-          console.log(`Option ${option.text}: ${safeVotes.length} votes (${percentage}%)`);
 
           return (
-            <div key={option._id} className="space-y-1">
+            <div key={option._id || Math.random().toString()} className="space-y-1">
               <div
                 className={`relative p-2 rounded transition-all poll-option ${
                   localPoll.isActive ? "hover:bg-base-200/50 cursor-pointer" : ""

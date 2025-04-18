@@ -13,6 +13,8 @@ export const useGroupStore = create((set, get) => ({
   isCreatingGroup: false,
   isCreatingPoll: false,
   typingInGroup: {}, // Map of user IDs typing in each group
+  smartReplies: [],
+  isLoadingSmartReplies: false,
   
   // Create a new group
   createGroup: async (groupData) => {
@@ -45,8 +47,7 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
- // In useGroupStore.js, update the getGroupMessages function:
-
+  // Get messages for a group with safe poll data handling
   getGroupMessages: async (groupId) => {
     set({ isLoadingMessages: true });
     try {
@@ -85,6 +86,9 @@ export const useGroupStore = create((set, get) => ({
   // Send message to group - updated to handle documents safely
   sendGroupMessage: async (messageData) => {
     const { selectedGroup, groupMessages } = get();
+    
+    // Clear smart replies when sending a message
+    set({ smartReplies: [] });
     
     try {
       // Create a clean copy of messageData without File objects
@@ -187,131 +191,123 @@ export const useGroupStore = create((set, get) => ({
     }
   },
   
-  // Vote on a poll
- // In useGroupStore.js
-
-  // Vote on a poll
-  // In useGroupStore.js
-  // In useGroupStore.js
-  // In useGroupStore.js - Improve the votePoll function to properly update state
-  // Update this function in frontend/src/store/useGroupStore.js
-  // Update this function in frontend/src/store/useGroupStore.js
-// Replace this function in frontend/src/store/useGroupStore.js
-votePoll: async (voteData) => {
-  try {
-    console.log("Voting with data:", voteData);
-    
-    // Immediately update the local state for responsive UI
-    // First, find the current state of the poll
-    const { groupMessages, selectedGroup } = get();
-    
-    const groupMessage = groupMessages.find(msg => 
-      msg.poll && msg.poll._id === voteData.pollId
-    );
-    
-    if (!groupMessage || !groupMessage.poll) {
-      console.error("Poll not found in state:", voteData.pollId);
-      return false;
-    }
-    
-    const pollData = groupMessage.poll;
-    const userId = useAuthStore.getState().authUser._id;
-    
-    // Create an optimistic update of the poll with the new vote
-    const updatedOptions = pollData.options.map(option => {
-      // Make a deep copy of the option
-      const newOption = { 
-        ...option,
-        votes: [...(Array.isArray(option.votes) ? option.votes : [])]
-      };
+  // Vote on a poll with safe handling
+  votePoll: async (voteData) => {
+    try {
+      console.log("Voting with data:", voteData);
       
-      // If this is the selected option, add the user's vote
-      if (option._id === voteData.optionId) {
-        // Check if the user already voted for this option
-        const alreadyVoted = newOption.votes.some(vote => {
-          if (typeof vote === 'string') return vote === userId;
-          return vote._id === userId;
-        });
-        
-        if (!alreadyVoted) {
-          // Add the vote - use full user object if we have it
-          const authUser = useAuthStore.getState().authUser;
-          newOption.votes.push(authUser);
-        }
-      } else {
-        // Remove the user's vote from other options
-        newOption.votes = newOption.votes.filter(vote => {
-          if (typeof vote === 'string') return vote !== userId;
-          return vote._id !== userId;
-        });
+      // Immediately update the local state for responsive UI
+      // First, find the current state of the poll
+      const { groupMessages } = get();
+      
+      const groupMessage = groupMessages.find(msg => 
+        msg.poll && msg.poll._id === voteData.pollId
+      );
+      
+      if (!groupMessage || !groupMessage.poll) {
+        console.error("Poll not found in state:", voteData.pollId);
+        return false;
       }
       
-      return newOption;
-    });
-    
-    // Update local state immediately for responsive UI
-    set(state => ({
-      groupMessages: state.groupMessages.map(msg => {
-        if (msg.poll && msg.poll._id === voteData.pollId) {
-          return {
-            ...msg,
-            poll: {
-              ...msg.poll,
-              options: updatedOptions
+      const pollData = groupMessage.poll;
+      const userId = useAuthStore.getState().authUser._id;
+      
+      // Create an optimistic update of the poll with the new vote
+      const updatedOptions = pollData.options && Array.isArray(pollData.options) 
+        ? pollData.options.map(option => {
+            // Make a deep copy of the option
+            const newOption = { 
+              ...option,
+              votes: [...(Array.isArray(option.votes) ? option.votes : [])]
+            };
+            
+            // If this is the selected option, add the user's vote
+            if (option._id === voteData.optionId) {
+              // Check if the user already voted for this option
+              const alreadyVoted = newOption.votes.some(vote => {
+                if (typeof vote === 'string') return vote === userId;
+                return vote?._id === userId;
+              });
+              
+              if (!alreadyVoted) {
+                // Add the vote - use full user object if we have it
+                const authUser = useAuthStore.getState().authUser;
+                newOption.votes.push(authUser);
+              }
+            } else {
+              // Remove the user's vote from other options
+              newOption.votes = newOption.votes.filter(vote => {
+                if (typeof vote === 'string') return vote !== userId;
+                return vote?._id !== userId;
+              });
             }
-          };
-        }
-        return msg;
-      })
-    }));
-    
-    // Now make the API call
-    const res = await axiosInstance.post("/polls/vote", voteData);
-    
-    // If the API call fails, we'll revert the optimistic update
-    if (!res.data || res.status !== 200) {
-      console.error("API error:", res);
-      toast.error("Failed to record your vote");
+            
+            return newOption;
+          })
+        : [];
       
-      // Revert to original state
-      set(state => ({
-        groupMessages: state.groupMessages.map(msg => {
-          if (msg.poll && msg.poll._id === voteData.pollId) {
-            return groupMessage; // Revert to original message
-          }
-          return msg;
-        })
-      }));
-      
-      return false;
-    }
-    
-    // Successful API call - update with server response for consistency
-    // Just in case the server response is different from our optimistic update
-    if (res.data && res.data.options) {
+      // Update local state immediately for responsive UI
       set(state => ({
         groupMessages: state.groupMessages.map(msg => {
           if (msg.poll && msg.poll._id === voteData.pollId) {
             return {
               ...msg,
-              poll: res.data
+              poll: {
+                ...msg.poll,
+                options: updatedOptions
+              }
             };
           }
           return msg;
         })
       }));
+      
+      // Now make the API call
+      const res = await axiosInstance.post("/polls/vote", voteData);
+      
+      // If the API call fails, we'll revert the optimistic update
+      if (!res.data || res.status !== 200) {
+        console.error("API error:", res);
+        toast.error("Failed to record your vote");
+        
+        // Revert to original state
+        set(state => ({
+          groupMessages: state.groupMessages.map(msg => {
+            if (msg.poll && msg.poll._id === voteData.pollId) {
+              return groupMessage; // Revert to original message
+            }
+            return msg;
+          })
+        }));
+        
+        return false;
+      }
+      
+      // Successful API call - update with server response for consistency
+      // Just in case the server response is different from our optimistic update
+      if (res.data && res.data.options) {
+        set(state => ({
+          groupMessages: state.groupMessages.map(msg => {
+            if (msg.poll && msg.poll._id === voteData.pollId) {
+              return {
+                ...msg,
+                poll: res.data
+              };
+            }
+            return msg;
+          })
+        }));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      toast.error("Failed to vote: " + (error.response?.data?.message || error.message));
+      return false;
     }
-    
-    return true;
-  } catch (error) {
-    console.error("Error voting on poll:", error);
-    toast.error("Failed to vote: " + (error.response?.data?.message || error.message));
-    return false;
-  }
-},
+  },
   
   // End a poll (only creator can end)
-    // Update this function in frontend/src/store/useGroupStore.js
   endPoll: async (pollId) => {
     try {
       console.log("Attempting to end poll:", pollId);
@@ -375,6 +371,25 @@ votePoll: async (voteData) => {
     }
   },
   
+  // Get smart replies for the group
+  getSmartReplies: async (message) => {
+    if (!message) return;
+    
+    set({ isLoadingSmartReplies: true });
+    try {
+      const res = await axiosInstance.post("/smart-replies/generate", { message });
+      set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
+    } catch (error) {
+      console.error("Error fetching smart replies:", error);
+      set({ smartReplies: [], isLoadingSmartReplies: false });
+    }
+  },
+  
+  // Clear smart replies
+  clearSmartReplies: () => {
+    set({ smartReplies: [] });
+  },
+  
   // Subscribe to group socket events
   subscribeToGroupMessages: () => {
     const socket = useAuthStore.getState().socket;
@@ -394,6 +409,11 @@ votePoll: async (voteData) => {
           messageId: message._id,
           groupId: group._id
         });
+        
+        // Generate smart replies when receiving a new message
+        if (message.text) {
+          get().getSmartReplies(message.text);
+        }
       }
       
       // Toast notification for messages in other groups
@@ -413,68 +433,68 @@ votePoll: async (voteData) => {
       }
     });
     
-    // Handle poll votes
-   // Inside subscribeToGroupMessages function
-    // Update this socket handler in the subscribeToGroupMessages function in useGroupStore.js
+    // Handle poll votes with safe handling
     socket.on("pollVote", (data) => {
       console.log("Received poll vote socket event:", data);
-      const { selectedGroup, groupMessages } = get();
+      const { selectedGroup } = get();
       
       if (selectedGroup && selectedGroup._id === data.groupId) {
-        // Ensure we always have valid poll data with options and votes arrays
-        if (!data.poll || !Array.isArray(data.poll.options)) {
-          console.error("Invalid poll data in socket event:", data.poll);
+        // Make sure poll and options exist and are properly structured
+        if (!data.poll) {
+          console.error("Invalid poll data in socket event");
           return;
         }
         
-        // Create a normalized poll object
-        const normalizedPoll = {
+        // Ensure options is always an array
+        const safeOptions = Array.isArray(data.poll.options) 
+          ? data.poll.options 
+          : [];
+        
+        // Create a safer poll object
+        const safePoll = {
           ...data.poll,
-          options: data.poll.options.map(option => ({
+          options: safeOptions.map(option => ({
             ...option,
-            // Always ensure votes is an array
-            votes: Array.isArray(option.votes) ? option.votes : [],
-            _id: option._id || option.id // Handle potential inconsistency in ID field
+            // Ensure votes is always an array
+            votes: Array.isArray(option.votes) ? option.votes : []
           })),
-          // Ensure creator is an object even if it's null
-          creator: data.poll.creator || { fullName: "Unknown" }
+          // Ensure creator is an object
+          creator: data.poll.creator || { _id: "", fullName: "Unknown" }
         };
         
-        console.log("Normalized socket poll data:", normalizedPoll);
-        
-        // Update messages with the new poll data
+        // Update state safely
         set(state => ({
           groupMessages: state.groupMessages.map(msg => {
             if (msg._id === data.messageId && msg.poll) {
-              // Replace the entire poll object
               return {
                 ...msg,
-                poll: normalizedPoll
+                poll: safePoll
               };
             }
             return msg;
           })
         }));
-        
-        // Try to force a UI refresh by slightly delaying another update
-        setTimeout(() => {
-          set(state => ({
-            groupMessages: [...state.groupMessages]
-          }));
-        }, 100);
       }
     });
+    
     // Handle poll ended
     socket.on("pollEnded", (data) => {
-      const { selectedGroup, groupMessages } = get();
+      const { selectedGroup } = get();
       
       if (selectedGroup && selectedGroup._id === data.groupId) {
         set(state => ({
-          groupMessages: state.groupMessages.map(msg => 
-            msg._id === data.messageId
-              ? { ...msg, poll: data.poll }
-              : msg
-          )
+          groupMessages: state.groupMessages.map(msg => {
+            if (msg._id === data.messageId && msg.poll) {
+              return { 
+                ...msg, 
+                poll: {
+                  ...msg.poll,
+                  isActive: false
+                } 
+              };
+            }
+            return msg;
+          })
         }));
       }
     });
@@ -545,16 +565,19 @@ votePoll: async (voteData) => {
               if (removed) {
                 return {
                   ...msg,
-                  reactions: msg.reactions.filter(r => 
-                    !(r.userId === reaction.userId && r.emoji === reaction.emoji)
-                  )
+                  reactions: Array.isArray(msg.reactions) 
+                    ? msg.reactions.filter(r => 
+                        !(r.userId === reaction.userId && r.emoji === reaction.emoji)
+                      )
+                    : []
                 };
               }
               
               // If new reaction was added
+              const reactions = Array.isArray(msg.reactions) ? msg.reactions : [];
               return {
                 ...msg,
-                reactions: [...msg.reactions, reaction]
+                reactions: [...reactions, reaction]
               };
             }
             return msg;
@@ -586,6 +609,8 @@ votePoll: async (voteData) => {
     if (!selectedGroup) return;
     
     const socket = useAuthStore.getState().socket;
+    if (!socket || !socket.connected) return;
+    
     socket.emit("typingInGroup", {
       groupId: selectedGroup._id,
       isTyping
