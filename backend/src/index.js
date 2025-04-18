@@ -13,6 +13,7 @@ import { app, server } from "./lib/socket.js";   // ← app comes from socket.js
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import groupRoutes from "./routes/group.route.js";
+import helperRoutes from "./routes/helper.route.js";
 import pollRoutes from "./routes/poll.route.js";
 import smartReplyRoutes from "./routes/smartReply.route.js";
 
@@ -55,11 +56,13 @@ app.use(cookieParser());
 /* -------------------------------------------------------------------------- */
 /*                                 R O U T E S                                */
 /* -------------------------------------------------------------------------- */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/smart-replies", smartReplyRoutes);
+app.use("/api/ai", helperRoutes);
 
 /* simple uptime check */
 app.get("/api/health", (_, res) => res.json({ status: "ok" }));
