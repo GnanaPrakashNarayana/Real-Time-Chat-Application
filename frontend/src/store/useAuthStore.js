@@ -90,9 +90,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       await axiosInstance.post("/auth/logout");
       removeToken(); // Remove token from localStorage
+      get().disconnectSocket();
       set({ authUser: null });
       toast.success("Logged out successfully");
-      get().disconnectSocket();
     } catch (error) {
       toast.error(error.response?.data?.message || "Logout failed");
       // Still remove token and user data on error
@@ -120,15 +120,16 @@ export const useAuthStore = create((set, get) => ({
     if (!authUser) return;
     
     // If already connected, don't reconnect
-    if (get().socket?._socket?.connected) {
+    const currentSocket = get().socket;
+    if (currentSocket && currentSocket.connected) {
       console.log("Socket already connected");
       return;
     }
   
     // Disconnect any existing socket first
-    if (get().socket && get().socket._socket) {
+    if (currentSocket) {
       try {
-        get().socket._socket.disconnect();
+        currentSocket.disconnect();
       } catch (err) {
         console.error("Error disconnecting socket:", err);
       }
@@ -184,16 +185,15 @@ export const useAuthStore = create((set, get) => ({
     }
   },
   
-  
   disconnectSocket: () => {
     const socket = get().socket;
-    if (socket && socket._socket) {
+    if (socket) {
       try {
-        socket._socket.disconnect();
-        set({ socket: null });
+        socket.disconnect();
       } catch (error) {
         console.error("Error disconnecting socket:", error);
-        set({ socket: null }); // Force clear even if error
+      } finally {
+        set({ socket: null });
       }
     }
   }

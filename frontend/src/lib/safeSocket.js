@@ -80,6 +80,19 @@ export const safeEmit = (socket, eventName, data) => {
       
       get id() {
         return socket && socket.id;
+      },
+  
+      disconnect: () => {
+        try {
+          if (socket && typeof socket.disconnect === 'function') {
+            socket.disconnect();
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error("Error disconnecting socket:", error);
+          return false;
+        }
       }
     };
   };

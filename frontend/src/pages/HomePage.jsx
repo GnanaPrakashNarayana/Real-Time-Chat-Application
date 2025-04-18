@@ -23,7 +23,24 @@ const HomePage = () => {
         <div className="bg-base-100 rounded-lg shadow-cl w-full max-w-6xl h-[calc(100vh-8rem)]">
           {/* Tab Navigation */}
           <div className="border-b border-base-300 flex">
-            {/* Tab buttons stay the same */}
+            <button
+              className={`flex-1 py-3 px-4 flex items-center justify-center gap-2 transition-colors
+                ${activeTab === "direct" ? "border-b-2 border-primary text-primary" : "hover:bg-base-200"}
+              `}
+              onClick={() => setActiveTab("direct")}
+            >
+              <MessageSquare className="size-5" />
+              <span className="font-medium">Direct Messages</span>
+            </button>
+            <button
+              className={`flex-1 py-3 px-4 flex items-center justify-center gap-2 transition-colors
+                ${activeTab === "groups" ? "border-b-2 border-primary text-primary" : "hover:bg-base-200"}
+              `}
+              onClick={() => setActiveTab("groups")}
+            >
+              <Users className="size-5" />
+              <span className="font-medium">Group Chats</span>
+            </button>
           </div>
           
           <div className="flex h-[calc(100%-3rem)] rounded-lg overflow-hidden">

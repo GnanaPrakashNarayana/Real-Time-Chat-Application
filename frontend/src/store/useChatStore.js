@@ -43,11 +43,15 @@ export const useChatStore = create((set, get) => ({
           
           // Emit socket event only if API call succeeds
           const socket = useAuthStore.getState().socket;
-          if (socket?.connected) {
-            socket.emit("messageRead", {
-              senderId: selectedUser._id,
-              receiverId: useAuthStore.getState().authUser._id
-            });
+          if (socket && socket.emit) {
+            try {
+              socket.emit("messageRead", {
+                senderId: selectedUser._id,
+                receiverId: useAuthStore.getState().authUser._id
+              });
+            } catch (socketError) {
+              console.error("Error emitting messageRead event:", socketError);
+            }
           }
         } catch (error) {
           console.log("Error marking messages as read:", error);
@@ -169,86 +173,156 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
-    if (!socket) return;
+    if (!socket) {
+      console.warn("Cannot subscribe to messages: Socket not available");
+      return;
+    }
 
-    socket.on("newMessage", (newMessage) => {
-      const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (isMessageFromSelectedUser) {
-        set({
-          messages: [...get().messages, newMessage],
-        });
-        
-        // Generate smart replies when receiving a new message
-        if (newMessage.text) {
-          get().getSmartReplies(newMessage.text);
-        }
-        
-        // Mark message as read if chat is open
-        get().markMessagesAsRead();
-      }
-    });
-    
-    // Listen for typing indicators
-    socket.on("userTyping", (data) => {
-      if (data.senderId === selectedUser._id) {
-        set(state => ({
-          typingUsers: {
-            ...state.typingUsers,
-            [data.senderId]: data.isTyping
+    try {
+      socket.on("newMessage", (newMessage) => {
+        try {
+          if (!newMessage || typeof newMessage !== 'object') {
+            console.warn("Received invalid message data:", newMessage);
+            return;
           }
-        }));
-      }
-    });
-    
-    // Listen for read receipts
-    socket.on("messagesRead", (readerId) => {
-      if (readerId === selectedUser._id) {
-        set(state => ({
-          messages: state.messages.map(msg => 
-            msg.senderId === useAuthStore.getState().authUser._id ? {...msg, read: true} : msg
-          )
-        }));
-      }
-    });
-    
-    // Listen for message reactions
-    socket.on("messageReaction", (data) => {
-      const { messageId, reaction, removed } = data;
-      
-      set(state => ({
-        messages: state.messages.map(msg => {
-          if (msg._id === messageId) {
-            // If reaction was removed
-            if (removed) {
-              return {
-                ...msg,
-                reactions: msg.reactions?.filter(r => 
-                  !(r.userId === reaction.userId && r.emoji === reaction.emoji)
-                ) || []
-              };
+          
+          const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
+          if (isMessageFromSelectedUser) {
+            set({
+              messages: [...get().messages, newMessage],
+            });
+            
+            // Generate smart replies when receiving a new message
+            if (newMessage.text) {
+              try {
+                get().getSmartReplies(newMessage.text);
+              } catch (smartReplyError) {
+                console.error("Error generating smart replies:", smartReplyError);
+              }
             }
             
-            // If new reaction was added
-            const reactions = msg.reactions || [];
-            return {
-              ...msg,
-              reactions: [...reactions, reaction]
-            };
+            // Mark message as read if chat is open
+            get().markMessagesAsRead();
           }
-          return msg;
-        })
-      }));
-    });
+        } catch (messageError) {
+          console.error("Error handling newMessage event:", messageError);
+        }
+      });
+      
+      // Listen for typing indicators with error handling
+      socket.on("userTyping", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid userTyping data:", data);
+            return;
+          }
+          
+          if (data.senderId === selectedUser._id) {
+            set(state => ({
+              typingUsers: {
+                ...state.typingUsers,
+                [data.senderId]: data.isTyping
+              }
+            }));
+          }
+        } catch (typingError) {
+          console.error("Error handling userTyping event:", typingError);
+        }
+      });
+      
+      // Listen for read receipts with error handling
+      socket.on("messagesRead", (readerId) => {
+        try {
+          if (readerId === selectedUser._id) {
+            set(state => ({
+              messages: state.messages.map(msg => 
+                msg.senderId === useAuthStore.getState().authUser._id ? {...msg, read: true} : msg
+              )
+            }));
+          }
+        } catch (readError) {
+          console.error("Error handling messagesRead event:", readError);
+        }
+      });
+      
+      // Listen for message reactions with error handling
+      socket.on("messageReaction", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid messageReaction data:", data);
+            return;
+          }
+          
+          const { messageId, reaction, removed } = data;
+          if (!messageId) return;
+          
+          set(state => ({
+            messages: state.messages.map(msg => {
+              if (msg._id === messageId) {
+                // Ensure reactions is always an array
+                const currentReactions = Array.isArray(msg.reactions) ? msg.reactions : [];
+                
+                // If reaction was removed
+                if (removed) {
+                  return {
+                    ...msg,
+                    reactions: currentReactions.filter(r => 
+                      !(r.userId === reaction?.userId && r.emoji === reaction?.emoji)
+                    )
+                  };
+                }
+                
+                // If new reaction was added and it's valid
+                if (reaction && typeof reaction === 'object' && reaction.emoji) {
+                  return {
+                    ...msg,
+                    reactions: [...currentReactions, reaction]
+                  };
+                }
+                return msg;
+              }
+              return msg;
+            })
+          }));
+        } catch (reactionError) {
+          console.error("Error handling messageReaction event:", reactionError);
+        }
+      });
+    } catch (subscribeError) {
+      console.error("Error setting up message subscription:", subscribeError);
+    }
   },
   
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
     
-    socket.off("newMessage");
-    socket.off("userTyping");
-    socket.off("messagesRead");
-    socket.off("messageReaction");
+    try {
+      socket.off("newMessage");
+      socket.off("userTyping");
+      socket.off("messagesRead");
+      socket.off("messageReaction");
+    } catch (error) {
+      console.error("Error unsubscribing from messages:", error);
+    }
+  },
+
+  // Send typing status with error handling
+  sendTypingStatus: (isTyping) => {
+    const { selectedUser } = get();
+    if (!selectedUser) return;
+    
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+    
+    try {
+      socket.emit("typing", {
+        receiverId: selectedUser._id,
+        isTyping
+      });
+    } catch (error) {
+      console.error("Error sending typing status:", error);
+    }
   },
 
   reactToMessage: async (messageId, emoji) => {
