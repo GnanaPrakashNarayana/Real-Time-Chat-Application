@@ -4,11 +4,6 @@ import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 
-// ——————————————————————————————————
-// 🔑 OPTIONAL – GPT‑powered summarisation
-// If you don’t want to use OpenAI just leave OPENAI_API_KEY undefined and
-// the controller falls back to a naïve first‑3‑sentences summary.
-// ——————————————————————————————————
 import OpenAI from "openai";
 const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
 
@@ -17,13 +12,11 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
 /* -------------------------------------------------------------------------- */
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const loggedInUserId = req.user._id;
-    const users = await User.find({ _id: { $ne: loggedInUserId } }).select(
-      "-password"
-    );
+    const myId = req.user._id;
+    const users = await User.find({ _id: { $ne: myId } }).select("-password");
     return res.status(200).json(users);
   } catch (err) {
-    console.error("getUsersForSidebar ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -33,36 +26,36 @@ export const getUsersForSidebar = async (req, res) => {
 /* -------------------------------------------------------------------------- */
 export const getMessages = async (req, res) => {
   try {
-    const { id: userToChatId } = req.params;
+    const { id: otherUserId } = req.params;
     const myId = req.user._id;
 
     const messages = await Message.find({
       $or: [
-        { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
+        { senderId: myId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: myId },
       ],
     });
 
     return res.status(200).json(messages);
   } catch (err) {
-    console.error("getMessages ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 /* -------------------------------------------------------------------------- */
-/*                        ✨  NEW: CONVERSATION SUMMARY  ✨                     */
+/*                        ✨  CONVERSATION SUMMARY  ✨                          */
 /* -------------------------------------------------------------------------- */
 export const getConversationSummary = async (req, res) => {
   try {
-    const { id: userToChatId } = req.params;
+    const { id: otherUserId } = req.params;
     const myId = req.user._id;
 
-    // Pull the most recent 30 textual messages
+    // pull last 30 text messages (most‑recent first)
     const messages = await Message.find({
       $or: [
-        { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
+        { senderId: myId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: myId },
       ],
       text: { $exists: true, $ne: "" },
     })
@@ -70,21 +63,18 @@ export const getConversationSummary = async (req, res) => {
       .limit(30);
 
     if (messages.length === 0)
-      return res
-        .status(200)
-        .json({ summary: "No messages to summarise yet." });
+      return res.status(200).json({ summary: "No messages yet to summarise." });
 
-    const transcript = messages
-      .reverse() // chronological order helps GPT
+    const lines = messages
+      .reverse() // chronological
       .map(
         (m) =>
           `${m.senderId.toString() === myId.toString() ? "You" : "Them"}: ${
             m.text
           }`
-      )
-      .join("\n");
+      );
 
-    /* ——— Use GPT‑3.5 if available ——— */
+    /* ——— GPT (if key provided) ——— */
     if (openai) {
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo-0125",
@@ -92,20 +82,21 @@ export const getConversationSummary = async (req, res) => {
           {
             role: "system",
             content:
-              "Summarise the following chat in one short paragraph (less than 80 words, no bullet points):",
+              "Summarise the conversation in ONE paragraph (≤80 words, no bullets):",
           },
-          { role: "user", content: transcript },
+          { role: "user", content: lines.join("\n") },
         ],
       });
-      const summary = completion.choices[0].message.content.trim();
-      return res.status(200).json({ summary });
+      return res
+        .status(200)
+        .json({ summary: completion.choices[0].message.content.trim() });
     }
 
-    /* ——— Fallback: pick first three sentences ——— */
-    const naive = transcript.split(/(?<=[.!?])\s+/).slice(0, 3).join(" ");
-    return res.status(200).json({ summary: naive });
+    /* ——— Fallback: last 6 messages stitched ——— */
+    const recentSix = lines.slice(-6).join(" ");
+    return res.status(200).json({ summary: recentSix });
   } catch (err) {
-    console.error("getConversationSummary ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -121,7 +112,7 @@ export const sendMessage = async (req, res) => {
 
     let imageUrl, documentData, voiceMessageData;
 
-    /* ——— Handle optional uploads ——— */
+    /* optional uploads */
     if (image) {
       const up = await cloudinary.uploader.upload(image);
       imageUrl = up.secure_url;
@@ -153,8 +144,7 @@ export const sendMessage = async (req, res) => {
       };
     }
 
-    /* ——— Create + emit message ——— */
-    const newMessage = await Message.create({
+    const newMsg = await Message.create({
       senderId,
       receiverId,
       text,
@@ -164,12 +154,11 @@ export const sendMessage = async (req, res) => {
     });
 
     const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId)
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+    if (receiverSocketId) io.to(receiverSocketId).emit("newMessage", newMsg);
 
-    return res.status(201).json(newMessage);
+    return res.status(201).json(newMsg);
   } catch (err) {
-    console.error("sendMessage ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -194,7 +183,7 @@ export const markMessagesAsRead = async (req, res) => {
       .status(200)
       .json({ success: true, modifiedCount: updated.modifiedCount });
   } catch (err) {
-    console.error("markMessagesAsRead ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -208,12 +197,10 @@ export const reactToMessage = async (req, res) => {
     const { emoji } = req.body;
     const userId = req.user._id;
 
-    if (!emoji)
-      return res.status(400).json({ message: "Emoji is required" });
+    if (!emoji) return res.status(400).json({ message: "Emoji is required" });
 
     const message = await Message.findById(messageId);
-    if (!message)
-      return res.status(404).json({ message: "Message not found" });
+    if (!message) return res.status(404).json({ message: "Message not found" });
 
     const idx = message.reactions?.findIndex(
       (r) => r.userId.toString() === userId.toString() && r.emoji === emoji
@@ -243,7 +230,7 @@ export const reactToMessage = async (req, res) => {
 
     return res.status(200).json(message);
   } catch (err) {
-    console.error("reactToMessage ➜", err);
+    console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
