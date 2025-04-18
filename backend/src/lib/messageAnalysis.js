@@ -5,7 +5,7 @@
  */
 
 // Message intent categories
-const INTENT = {
+export const INTENT = {
     GREETING: 'greeting',
     QUESTION: 'question',
     STATEMENT: 'statement',
@@ -18,16 +18,16 @@ const INTENT = {
     SENTIMENT_POSITIVE: 'sentiment_positive',
     SENTIMENT_NEGATIVE: 'sentiment_negative',
     SENTIMENT_NEUTRAL: 'sentiment_neutral',
-  };
+};
   
-  // Helper function to check for word patterns
-  const containsAny = (text, wordList) => {
+// Helper function to check for word patterns
+const containsAny = (text, wordList) => {
     const regex = new RegExp(`\\b(${wordList.join('|')})\\b`, 'i');
     return regex.test(text);
-  };
+};
   
-  // Detect message intent
-  const detectIntent = (message) => {
+// Detect message intent
+export const detectIntent = (message) => {
     const text = message.toLowerCase();
     const intents = [];
     
@@ -93,10 +93,10 @@ const INTENT = {
     }
     
     return intents;
-  };
+};
   
-  // Generate smart replies based on message intent
-  const generateSmartRepliesByIntent = (message) => {
+// Generate smart replies based on message intent
+export const generateSmartRepliesByIntent = (message) => {
     const intents = detectIntent(message);
     const allReplies = [];
     
@@ -227,10 +227,4 @@ const INTENT = {
       "Got it.",
       "Tell me more about that."
     ];
-  };
-  
-  module.exports = {
-    detectIntent,
-    generateSmartRepliesByIntent,
-    INTENT
-  };
+};
