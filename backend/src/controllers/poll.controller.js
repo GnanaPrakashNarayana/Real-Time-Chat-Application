@@ -78,6 +78,11 @@ export const createPoll = async (req, res) => {
  *  VOTE ON A POLL                                                                       *
  *****************************************************************************************/
 // Update the votePoll function in backend/src/controllers/poll.controller.js
+// backend/src/controllers/poll.controller.js - Update these methods
+
+/*****************************************************************************************
+ *  VOTE ON A POLL                                                                       *
+ *****************************************************************************************/
 export const votePoll = async (req, res) => {
     try {
       const { pollId, optionId } = req.body;
@@ -86,52 +91,76 @@ export const votePoll = async (req, res) => {
       console.log(`Processing vote: User ${userId} voting for option ${optionId} in poll ${pollId}`);
   
       const poll = await Poll.findById(pollId);
-      if (!poll) return res.status(404).json({ message: "Poll not found" });
-      if (!poll.isActive) return res.status(400).json({ message: "This poll is no longer active" });
+      if (!poll) {
+        console.log("Poll not found:", pollId);
+        return res.status(404).json({ message: "Poll not found" });
+      }
+      
+      if (!poll.isActive) {
+        console.log("Poll is no longer active:", pollId);
+        return res.status(400).json({ message: "This poll is no longer active" });
+      }
   
-      // 1️⃣ Remove any previous vote by this user
+      console.log("Found poll:", poll._id, "with options:", poll.options.length);
+  
+      // Find the specific option
+      const option = poll.options.id(optionId);
+      if (!option) {
+        console.log("Option not found in poll:", optionId);
+        return res.status(404).json({ message: "Option not found" });
+      }
+  
+      // Convert user ID to string for consistent comparison
+      const userIdStr = userId.toString();
+  
+      // Remove any previous vote by this user from all options
+      let userHadPreviousVote = false;
       poll.options.forEach((opt) => {
-        opt.votes = opt.votes.filter((v) => v.toString() !== userId.toString());
+        const previousVoteIndex = opt.votes.findIndex(
+          voteId => voteId.toString() === userIdStr
+        );
+        
+        if (previousVoteIndex >= 0) {
+          userHadPreviousVote = true;
+          opt.votes.splice(previousVoteIndex, 1);
+          console.log(`Removed previous vote from option ${opt._id}`);
+        }
       });
   
-      // 2️⃣ Add the new vote
-      const option = poll.options.id(optionId);
-      if (!option) return res.status(404).json({ message: "Option not found" });
+      // Add new vote to selected option
       option.votes.push(userId);
+      console.log(`Added vote to option ${option._id}, new vote count: ${option.votes.length}`);
   
-      // ✅ Mark the nested path as modified so Mongoose actually saves the change
+      // Mark the nested path as modified so Mongoose saves the changes
       poll.markModified("options");
       await poll.save();
+      console.log("Poll saved successfully");
   
-      // Grab associated message for socket payload
-      const message = await GroupMessage.findById(poll.messageId);
-      if (!message) return res.status(404).json({ message: "Associated message not found" });
-  
-      // Hydrate poll for response / socket
+      // Get populated poll with user details
       const populatedPoll = await Poll.findById(poll._id)
         .populate("creator", "fullName profilePic")
         .populate("options.votes", "fullName profilePic");
   
-      // Additional check to ensure we have valid data before sending
       if (!populatedPoll) {
         console.error("Failed to retrieve populated poll after save");
         return res.status(500).json({ message: "Failed to retrieve updated poll" });
       }
   
-      // Log the populated poll for debugging
-      console.log("Populated poll to return:", {
-        id: populatedPoll._id,
-        options: populatedPoll.options.map(o => ({
-          id: o._id,
-          text: o.text,
-          voteCount: o.votes.length
-        }))
-      });
-  
+      // Find the group and message for socket notification
+      const message = await GroupMessage.findById(poll.messageId);
       const group = await Group.findById(poll.groupId);
-      if (!group) return res.status(404).json({ message: "Group not found" });
   
-      // Format the poll to ensure consistent data structure before sending
+      if (!message) {
+        console.log("Associated message not found:", poll.messageId);
+        return res.status(404).json({ message: "Associated message not found" });
+      }
+  
+      if (!group) {
+        console.log("Group not found:", poll.groupId);
+        return res.status(404).json({ message: "Group not found" });
+      }
+  
+      // Format the poll to ensure consistent data structure
       const formattedPoll = {
         ...populatedPoll.toObject(),
         options: populatedPoll.options.map(opt => ({
@@ -140,7 +169,17 @@ export const votePoll = async (req, res) => {
         }))
       };
   
-      // Broadcast vote to all members
+      // Log the formatted poll for verification
+      console.log("Formatted poll:", {
+        id: formattedPoll._id,
+        options: formattedPoll.options.map(o => ({
+          id: o._id,
+          text: o.text,
+          voteCount: o.votes.length
+        }))
+      });
+  
+      // Broadcast vote to all group members
       group.members.forEach((memberId) => {
         const socketId = getReceiverSocketId(memberId);
         if (socketId) {
@@ -153,44 +192,81 @@ export const votePoll = async (req, res) => {
         }
       });
   
+      // Return the updated poll
       res.status(200).json(formattedPoll);
     } catch (error) {
       console.error("Error in votePoll controller:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     }
   };
-/*****************************************************************************************
- *  END A POLL                                                                           *
- *****************************************************************************************/
-export const endPoll = async (req, res) => {
-  try {
-    const { pollId } = req.params;
-    const userId = req.user._id;
-
-    const poll = await Poll.findById(pollId);
-    if (!poll) return res.status(404).json({ message: "Poll not found" });
-    if (poll.creator.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Only the poll creator can end it" });
+  
+  /*****************************************************************************************
+   *  END A POLL                                                                           *
+   *****************************************************************************************/
+  export const endPoll = async (req, res) => {
+    try {
+      const { pollId } = req.params;
+      const userId = req.user._id;
+  
+      console.log(`User ${userId} attempting to end poll ${pollId}`);
+  
+      // Find the poll with populated creator
+      const poll = await Poll.findById(pollId).populate("creator", "fullName profilePic");
+      
+      if (!poll) {
+        console.log("Poll not found:", pollId);
+        return res.status(404).json({ message: "Poll not found" });
+      }
+  
+      // Convert to strings for safe comparison
+      const pollCreatorId = poll.creator._id.toString();
+      const requestUserId = userId.toString();
+  
+      console.log(`Poll creator ID: ${pollCreatorId}, Request user ID: ${requestUserId}`);
+      
+      // Check if the user is the creator of the poll
+      if (pollCreatorId !== requestUserId) {
+        console.log("Permission denied: User is not the poll creator");
+        return res.status(403).json({ 
+          message: "Only the poll creator can end it",
+          details: {
+            pollCreator: pollCreatorId,
+            requestUser: requestUserId
+          }
+        });
+      }
+  
+      // Update the poll
+      poll.isActive = false;
+      await poll.save();
+      console.log("Poll ended successfully");
+  
+      // Get the fully populated poll for response
+      const populatedPoll = await Poll.findById(pollId)
+        .populate("creator", "fullName profilePic")
+        .populate("options.votes", "fullName profilePic");
+  
+      // Notify group members
+      const group = await Group.findById(poll.groupId);
+      if (group && group.members) {
+        group.members.forEach((memberId) => {
+          const socketId = getReceiverSocketId(memberId);
+          if (socketId) {
+            io.to(socketId).emit("pollEnded", { 
+              pollId: poll._id,
+              messageId: poll.messageId,
+              groupId: poll.groupId
+            });
+          }
+        });
+      }
+  
+      res.status(200).json(populatedPoll);
+    } catch (error) {
+      console.error("Error in endPoll controller:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
     }
-
-    poll.isActive = false;
-    await poll.save();
-
-    // Notify members that the poll is closed
-    const group = await Group.findById(poll.groupId);
-    if (group) {
-      group.members.forEach((memberId) => {
-        const socketId = getReceiverSocketId(memberId);
-        if (socketId) io.to(socketId).emit("pollEnded", { pollId: poll._id });
-      });
-    }
-
-    res.status(200).json({ message: "Poll ended" });
-  } catch (error) {
-    console.error("Error in endPoll controller:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
+  };
 
 /*****************************************************************************************
  *  (OPTIONAL) GET POLL RESULTS WITHOUT VOTING                                           *

@@ -13,6 +13,11 @@ const pollOptionSchema = new mongoose.Schema({
   }]
 });
 
+// Add a method to get vote count
+pollOptionSchema.methods.getVoteCount = function() {
+  return Array.isArray(this.votes) ? this.votes.length : 0;
+};
+
 const pollSchema = new mongoose.Schema(
   {
     groupId: {
@@ -52,10 +57,28 @@ const pollSchema = new mongoose.Schema(
   }
 );
 
+// Add a virtual for total votes
+pollSchema.virtual('totalVotes').get(function() {
+  if (!this.options || !Array.isArray(this.options)) return 0;
+  
+  return this.options.reduce((total, option) => {
+    return total + (Array.isArray(option.votes) ? option.votes.length : 0);
+  }, 0);
+});
+
 // Method to check if a user has voted
 pollSchema.methods.hasUserVoted = function(userId) {
+  if (!userId) return false;
+  
+  // Convert to string for consistent comparison
+  const userIdStr = userId.toString();
+  
   for (const option of this.options) {
-    if (option.votes.some(vote => vote.toString() === userId.toString())) {
+    if (!Array.isArray(option.votes)) continue;
+    
+    if (option.votes.some(vote => {
+      return vote.toString() === userIdStr;
+    })) {
       return true;
     }
   }
@@ -64,20 +87,28 @@ pollSchema.methods.hasUserVoted = function(userId) {
 
 // Method to get the option a user voted for
 pollSchema.methods.getUserVote = function(userId) {
+  if (!userId) return null;
+  
+  // Convert to string for consistent comparison
+  const userIdStr = userId.toString();
+  
   for (const option of this.options) {
-    if (option.votes.some(vote => vote.toString() === userId.toString())) {
+    if (!Array.isArray(option.votes)) continue;
+    
+    if (option.votes.some(vote => vote.toString() === userIdStr)) {
       return option._id;
     }
   }
   return null;
 };
 
-// Method to get total votes
-pollSchema.methods.getTotalVotes = function() {
-  return this.options.reduce((total, option) => total + option.votes.length, 0);
+// Method to check if a user is the creator
+pollSchema.methods.isCreator = function(userId) {
+  if (!userId || !this.creator) return false;
+  return this.creator.toString() === userId.toString();
 };
 
-// Add pre-find hooks to always populate creator and votes
+// Add pre-find hooks to populate creator and votes
 pollSchema.pre('find', function(next) {
   this.populate('creator', 'fullName profilePic');
   this.populate('options.votes', 'fullName profilePic');
@@ -90,21 +121,23 @@ pollSchema.pre('findOne', function(next) {
   next();
 });
 
-// Also add a pre-hook for findById since it's commonly used
+// Add a pre-hook for findById since it's commonly used
 pollSchema.pre('findById', function(next) {
   this.populate('creator', 'fullName profilePic');
   this.populate('options.votes', 'fullName profilePic');
   next();
 });
 
-// Adding a custom method to ensure options are always properly formatted
-pollSchema.methods.ensureOptionsFormat = function() {
+// Method to safely format options for frontend
+pollSchema.methods.formatForClient = function() {
   return {
     ...this.toObject(),
     options: this.options.map(option => ({
       ...option.toObject(),
-      votes: Array.isArray(option.votes) ? option.votes : []
-    }))
+      votes: Array.isArray(option.votes) ? option.votes : [],
+      voteCount: option.votes.length || 0
+    })),
+    totalVotes: this.totalVotes
   };
 };
 

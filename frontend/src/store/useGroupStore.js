@@ -195,84 +195,126 @@ export const useGroupStore = create((set, get) => ({
   // In useGroupStore.js
   // In useGroupStore.js - Improve the votePoll function to properly update state
   // Update this function in frontend/src/store/useGroupStore.js
-  votePoll: async (voteData) => {
+  // Update this function in frontend/src/store/useGroupStore.js
+votePoll: async (voteData) => {
+  try {
+    console.log("Submitting vote:", voteData);
+    
+    // Validate vote data before sending
+    if (!voteData.pollId || !voteData.optionId) {
+      console.error("Invalid vote data:", voteData);
+      toast.error("Invalid vote data");
+      return false;
+    }
+    
+    const res = await axiosInstance.post("/polls/vote", voteData);
+    console.log("Vote response:", res.data);
+    
+    // Verify we got a valid response before updating state
+    if (!res.data || !res.data._id || !Array.isArray(res.data.options)) {
+      console.error("Received invalid poll data:", res.data);
+      toast.error("Received invalid response from server");
+      return false;
+    }
+    
+    // Create a properly normalized poll object
+    const normalizedPoll = {
+      ...res.data,
+      options: res.data.options.map(option => ({
+        ...option,
+        // Ensure votes are always arrays
+        votes: Array.isArray(option.votes) ? option.votes : [],
+        // Handle potential ID inconsistencies
+        _id: option._id || option.id
+      })),
+      // Ensure creator is a valid object
+      creator: res.data.creator || { _id: "", fullName: "Unknown" }
+    };
+    
+    // Find the message containing this poll and update it
+    set(state => {
+      const updatedMessages = state.groupMessages.map(msg => {
+        if (msg.poll && msg.poll._id === voteData.pollId) {
+          return {
+            ...msg,
+            poll: normalizedPoll
+          };
+        }
+        return msg;
+      });
+      
+      return { groupMessages: updatedMessages };
+    });
+    
+    // Force a refetch to ensure UI consistency
+    setTimeout(() => {
+      if (get().selectedGroup) {
+        get().getGroupMessages(get().selectedGroup._id);
+      }
+    }, 500);
+    
+    return true;
+  } catch (error) {
+    console.error("Error voting on poll:", error);
+    const errorMessage = error.response?.data?.message || error.message || "Unknown error";
+    toast.error(`Failed to vote: ${errorMessage}`);
+    return false;
+  }
+},
+  
+  // End a poll (only creator can end)
+    // Update this function in frontend/src/store/useGroupStore.js
+  endPoll: async (pollId) => {
     try {
-      // Add some debugging
-      console.log("Submitting vote:", voteData);
+      console.log("Attempting to end poll:", pollId);
       
-      const res = await axiosInstance.post("/polls/vote", voteData);
-      console.log("Vote response:", res.data);
+      const res = await axiosInstance.put(`/polls/end/${pollId}`);
+      console.log("End poll response:", res.data);
       
-      // Check if the response contains valid poll data
-      if (!res.data || typeof res.data !== 'object') {
-        console.error("Invalid poll data received:", res.data);
+      if (res.status !== 200) {
+        console.error("Unexpected response status:", res.status);
         return false;
       }
       
-      // Ensure we have a valid options array with votes arrays
-      const validOptions = (res.data.options || []).map(option => ({
-        ...option,
-        // Always ensure votes is an array - critical for UI rendering
-        votes: Array.isArray(option.votes) ? option.votes : [],
-        _id: option._id || option.id // Handle potential inconsistency in ID field
-      }));
-      
-      // Create a fresh poll object with normalized data
-      const normalizedPoll = {
-        ...res.data,
-        options: validOptions,
-        // Ensure creator is an object even if it's null
-        creator: res.data.creator || { fullName: "Unknown" }
-      };
-      
-      console.log("Normalized poll data:", normalizedPoll);
-      
-      // Update the poll in all messages to ensure UI refresh
-      set(state => {
-        // Find the message containing the poll
-        const updatedMessages = state.groupMessages.map(msg => {
-          if (msg.poll && msg.poll._id === voteData.pollId) {
-            // Replace the entire poll object
+      // Update the poll in the messages
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => {
+          if (msg.poll && msg.poll._id === pollId) {
             return { 
               ...msg, 
-              poll: normalizedPoll
+              poll: {
+                ...msg.poll,
+                isActive: false
+              } 
             };
           }
           return msg;
-        });
-        
-        return { groupMessages: updatedMessages };
-      });
-      
-      // Force an immediate recalculation of the state
-      get().getGroupMessages(get().selectedGroup._id);
-      
-      return true;
-    } catch (error) {
-      console.error("Error voting on poll:", error);
-      toast.error(error.response?.data?.message || "Failed to submit vote");
-      return false;
-    }
-  },
-  
-  // End a poll (only creator can end)
-  endPoll: async (pollId) => {
-    try {
-      const res = await axiosInstance.put(`/polls/end/${pollId}`);
-      
-      // Update the poll in the messages
-      set(state => ({
-        groupMessages: state.groupMessages.map(msg => 
-          msg.poll?._id === res.data._id 
-            ? { ...msg, poll: res.data } 
-            : msg
-        )
+        })
       }));
+      
+      // Fetch fresh data
+      if (get().selectedGroup) {
+        get().getGroupMessages(get().selectedGroup._id);
+      }
       
       return true;
     } catch (error) {
       console.error("Error ending poll:", error);
-      toast.error(error.response?.data?.message || "Failed to end poll");
+      
+      // Enhanced error reporting
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.statusText || 
+                          error.message || 
+                          "Unknown error";
+                          
+      const statusCode = error.response?.status;
+      
+      if (statusCode === 403) {
+        toast.error("You don't have permission to end this poll");
+      } else {
+        toast.error(`Failed to end poll: ${errorMessage}`);
+      }
+      
       return false;
     }
   },
