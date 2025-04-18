@@ -1,10 +1,13 @@
+// frontend/src/components/MessageInput.jsx
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X, Paperclip, Mic } from "lucide-react";
 import toast from "react-hot-toast";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import VoiceRecorder from "./VoiceRecorder";
+import { timeFunction } from "../lib/performanceMonitor";
 
-const MessageInput = () => {
+// Performance optimization with memo
+const MessageInput = memo(() => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [documentName, setDocumentName] = useState(null); // Just store name, not file object
@@ -17,9 +20,9 @@ const MessageInput = () => {
   const { sendMessage, sendTypingStatus } = useChatStore();
   const typingTimeoutRef = useRef(null);
 
-  // Handle typing indicator
-  useEffect(() => {
-    if (text.trim()) {
+  // Performance optimization with useCallback
+  const handleTypingStatus = useCallback((newText) => {
+    if (newText.trim()) {
       sendTypingStatus(true);
       
       // Clear previous timeout
@@ -34,6 +37,11 @@ const MessageInput = () => {
     } else {
       sendTypingStatus(false);
     }
+  }, [sendTypingStatus]);
+
+  // Handle typing indicator
+  useEffect(() => {
+    handleTypingStatus(text);
     
     // Cleanup
     return () => {
@@ -42,14 +50,20 @@ const MessageInput = () => {
       }
       sendTypingStatus(false);
     };
-  }, [text, sendTypingStatus]);
+  }, [text, handleTypingStatus, sendTypingStatus]);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
+  const handleImageChange = useCallback((e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
+      return;
+    }
+
+    // Check file size
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be less than 5MB");
       return;
     }
 
@@ -58,10 +72,10 @@ const MessageInput = () => {
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
-  };
+  }, []);
 
-  const handleDocumentChange = (e) => {
-    const file = e.target.files[0];
+  const handleDocumentChange = useCallback((e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     
     // Check file size (limit to 10MB)
@@ -88,18 +102,18 @@ const MessageInput = () => {
       setDocumentName(null);
     };
     reader.readAsDataURL(file);
-  };
+  }, []);
 
-  const removeImage = () => {
+  const removeImage = useCallback(() => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  }, []);
 
-  const removeDocument = () => {
+  const removeDocument = useCallback(() => {
     setDocumentName(null);
     setDocumentData(null);
     if (documentInputRef.current) documentInputRef.current.value = "";
-  };
+  }, []);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -128,10 +142,13 @@ const MessageInput = () => {
     if (documentInputRef.current) documentInputRef.current.value = "";
 
     try {
-      await sendMessage({
-        text: messageText,  // Use the stored text value
-        image: imagePreview,
-        document: messageDocument
+      // Use the timeFunction utility to monitor performance
+      await timeFunction('sendMessage', async () => {
+        return await sendMessage({
+          text: messageText,  // Use the stored text value
+          image: imagePreview,
+          document: messageDocument
+        });
       });
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -277,5 +294,8 @@ const MessageInput = () => {
       )}
     </div>
   );
-};
+});
+
+MessageInput.displayName = 'MessageInput';
+
 export default MessageInput;

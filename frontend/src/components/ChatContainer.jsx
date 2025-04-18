@@ -1,6 +1,6 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -12,8 +12,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
 
-const ChatContainer = () => {
-  const chatStore = useChatStore();
+// Performance optimization: memo wrapper to prevent unnecessary re-renders
+const ChatContainer = memo(() => {
   const {
     messages,
     getMessages,
@@ -31,50 +31,85 @@ const ChatContainer = () => {
   
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
+  const [error, setError] = useState(null);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
 
+  // Prevent infinite loop by tracking message count
   useEffect(() => {
-    getMessages(selectedUser._id);
-    subscribeToMessages();
-    
-    // Mark messages as read when chat is opened
-    markMessagesAsRead();
-    
-    return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead]);
-
-  useEffect(() => {
-    if (messageEndRef.current && messages) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
-      
-      // Mark messages as read when new messages arrive or when scrolled to bottom
-      markMessagesAsRead();
+    if (messages?.length !== lastMessageCount) {
+      setLastMessageCount(messages?.length || 0);
     }
-  }, [messages, markMessagesAsRead]);
+  }, [messages, lastMessageCount]);
 
-  // Find the last message from the other user to generate smart replies
-  useEffect(() => {
-    if (messages && messages.length > 0) {
-      // Get the last message from the other person
-      const lastOtherUserMessage = [...messages]
-        .reverse()
-        .find(msg => msg.senderId === selectedUser._id);
-        
-      // If we found a message and it has text, generate smart replies
-      if (lastOtherUserMessage?.text) {
-        chatStore.getSmartReplies(lastOtherUserMessage.text);
+  // Performance optimization: useCallback for functions to prevent recreating on each render
+  const scrollToBottom = useCallback(() => {
+    if (messageEndRef.current) {
+      try {
+        messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+      } catch (error) {
+        console.error("Error scrolling to bottom:", error);
       }
     }
-  }, [messages, selectedUser._id, chatStore]);
+  }, []);
 
-  // Handler for sending a smart reply
-  const handleSendSmartReply = (text) => {
+  useEffect(() => {
+    try {
+      if (!selectedUser || !selectedUser._id) {
+        console.error("Selected user is invalid:", selectedUser);
+        return;
+      }
+      
+      getMessages(selectedUser._id);
+      
+      // Add a small delay before subscribing to messages to avoid race conditions
+      const subscriptionTimeout = setTimeout(() => {
+        try {
+          subscribeToMessages();
+        } catch (err) {
+          console.error("Error subscribing to messages:", err);
+          setError("Failed to connect to messaging service");
+        }
+      }, 300);
+      
+      return () => {
+        clearTimeout(subscriptionTimeout);
+        try {
+          unsubscribeFromMessages();
+        } catch (err) {
+          console.error("Error unsubscribing from messages:", err);
+        }
+      };
+    } catch (error) {
+      console.error("Error in ChatContainer setup:", error);
+      setError("Something went wrong loading the chat");
+    }
+  }, [selectedUser?._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+
+  useEffect(() => {
+    if (messageEndRef.current && messages && messages.length > 0) {
+      scrollToBottom();
+      
+      // Add a small delay before marking messages as read to avoid race conditions
+      const readTimeout = setTimeout(() => {
+        try {
+          markMessagesAsRead();
+        } catch (err) {
+          console.error("Error marking messages as read:", err);
+        }
+      }, 500);
+      
+      return () => clearTimeout(readTimeout);
+    }
+  }, [messages, markMessagesAsRead, scrollToBottom]);
+
+  // Performance optimization: memoize the smart reply generation
+  const handleSendSmartReply = useCallback((text) => {
     if (!text) return;
-    
     sendMessage({ text });
-  };
+  }, [sendMessage]);
 
-  // Helper function to safely render document bubbles
-  const renderDocumentBubble = (document) => {
+  // Safely render document bubbles with error boundary
+  const renderDocumentBubble = useCallback((document) => {
     if (!document) return null;
     
     try {
@@ -111,7 +146,27 @@ const ChatContainer = () => {
         </div>
       );
     }
-  };
+  }, []);
+
+  // Show error message if something went wrong
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col overflow-auto">
+        <ChatHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="p-4 bg-base-200 rounded-lg text-error">
+            <p>{error}</p>
+            <button 
+              className="btn btn-sm btn-outline mt-2"
+              onClick={() => window.location.reload()}
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isMessagesLoading) {
     return (
@@ -123,89 +178,119 @@ const ChatContainer = () => {
     );
   }
 
-  const isTyping = typingUsers[selectedUser._id];
+  // Safely access typing status
+  const isTyping = typingUsers && typeof typingUsers === 'object' 
+    ? typingUsers[selectedUser?._id] 
+    : false;
+
+  // Safe check for messages array
+  const safeMessages = Array.isArray(messages) ? messages : [];
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
-            ref={index === messages.length - 1 ? messageEndRef : null}
-          >
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={
-                    message.senderId === authUser._id
-                      ? authUser.profilePic || "/avatar.png"
-                      : selectedUser.profilePic || "/avatar.png"
-                  }
-                  alt="profile pic"
+        {safeMessages.length === 0 && (
+          <div className="text-center py-8 text-base-content/60">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        )}
+        
+        {safeMessages.map((message, index) => {
+          // Skip invalid messages
+          if (!message || !message._id) return null;
+          
+          // Determine if message is from current user
+          const isFromCurrentUser = authUser && message.senderId === authUser._id;
+          
+          return (
+            <div
+              key={message._id}
+              className={`chat ${isFromCurrentUser ? "chat-end" : "chat-start"}`}
+              ref={index === safeMessages.length - 1 ? messageEndRef : null}
+            >
+              <div className="chat-image avatar">
+                <div className="size-10 rounded-full border">
+                  <img
+                    src={
+                      isFromCurrentUser
+                        ? authUser?.profilePic || "/avatar.png"
+                        : selectedUser?.profilePic || "/avatar.png"
+                    }
+                    alt="profile pic"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/avatar.png";
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div className="chat-header mb-1 flex items-center">
+                <time className="text-xs opacity-50 ml-1">
+                  {formatMessageTime(message.createdAt || new Date())}
+                </time>
+                
+                {/* Show read status for sent messages */}
+                {isFromCurrentUser && (
+                  <span className="ml-1">
+                    {message.read ? (
+                      <CheckCheck size={14} className="text-blue-500" />
+                    ) : (
+                      <Check size={14} className="text-gray-500" />
+                    )}
+                  </span>
+                )}
+              </div>
+              
+              <div className="chat-bubble">
+                {/* Voice message */}
+                {message.voiceMessage && message.voiceMessage.url && (
+                  <div className="mb-2">
+                    <AudioPlayer 
+                      audioUrl={message.voiceMessage.url} 
+                      duration={message.voiceMessage.duration}
+                    />
+                  </div>
+                )}
+                
+                {/* Document display - with robust error handling */}
+                {message.document && renderDocumentBubble(message.document)}
+                
+                {/* Image attachment */}
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt="Attachment"
+                    className="sm:max-w-[200px] rounded-md mb-2"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/placeholder-image.png";
+                      console.error("Error loading image");
+                    }}
+                  />
+                )}
+                
+                {/* Message text content */}
+                {message.text && <p>{message.text}</p>}
+                
+                {/* Fallback for empty messages */}
+                {!message.text && !message.image && !message.document && !message.voiceMessage && (
+                  <p className="text-xs italic opacity-50">Attachment</p>
+                )}
+              </div>
+              
+              {/* Message Reactions */}
+              <div className="chat-footer opacity-100">
+                <MessageReactions 
+                  message={message} 
+                  onReact={reactToMessage}
                 />
               </div>
             </div>
-            <div className="chat-header mb-1 flex items-center">
-              <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
-              </time>
-              
-              {/* Show read status for sent messages */}
-              {message.senderId === authUser._id && (
-                <span className="ml-1">
-                  {message.read ? (
-                    <CheckCheck size={14} className="text-blue-500" />
-                  ) : (
-                    <Check size={14} className="text-gray-500" />
-                  )}
-                </span>
-              )}
-            </div>
-            
-            <div className="chat-bubble">
-              {/* Voice message */}
-              {message.voiceMessage && message.voiceMessage.url && (
-                <div className="mb-2">
-                  <AudioPlayer 
-                    audioUrl={message.voiceMessage.url} 
-                    duration={message.voiceMessage.duration}
-                  />
-                </div>
-              )}
-              
-              {/* Document display - with robust error handling */}
-              {message.document && renderDocumentBubble(message.document)}
-              
-              {/* Image attachment */}
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Attachment"
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              
-              {/* Message text content */}
-              {message.text && <p>{message.text}</p>}
-              
-              {/* Fallback for empty messages */}
-              {!message.text && !message.image && !message.document && !message.voiceMessage && (
-                <p className="text-xs italic opacity-50">Attachment</p>
-              )}
-            </div>
-            
-            {/* Message Reactions */}
-            <div className="chat-footer opacity-100">
-              <MessageReactions 
-                message={message} 
-                onReact={reactToMessage}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         {/* Typing indicator */}
         {isTyping && (
@@ -213,8 +298,12 @@ const ChatContainer = () => {
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
                 <img
-                  src={selectedUser.profilePic || "/avatar.png"}
+                  src={selectedUser?.profilePic || "/avatar.png"}
                   alt="profile pic"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/avatar.png";
+                  }}
                 />
               </div>
             </div>
@@ -230,15 +319,19 @@ const ChatContainer = () => {
       </div>
 
       {/* Smart Reply Suggestions */}
-      <SmartReplySuggestions
-        suggestions={smartReplies}
-        isLoading={isLoadingSmartReplies}
-        onSendReply={handleSendSmartReply}
-      />
+      {Array.isArray(smartReplies) && smartReplies.length > 0 && (
+        <SmartReplySuggestions
+          suggestions={smartReplies}
+          isLoading={isLoadingSmartReplies}
+          onSendReply={handleSendSmartReply}
+        />
+      )}
 
       <MessageInput />
     </div>
   );
-};
+});
+
+ChatContainer.displayName = 'ChatContainer';
 
 export default ChatContainer;

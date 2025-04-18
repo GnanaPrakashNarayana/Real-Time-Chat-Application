@@ -1,5 +1,4 @@
 import Navbar from "./components/Navbar";
-
 import HomePage from "./pages/HomePage";
 import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
@@ -15,18 +14,27 @@ import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
 import ErrorBoundary from "./components/ErrorBoundary";
+import { startMemoryMonitoring } from "./lib/performanceMonitor";
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
 
-  console.log({ onlineUsers });
+  // Start performance monitoring in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      startMemoryMonitoring();
+      
+      return () => {
+        // Clean up when component unmounts
+        stopMemoryMonitoring();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  console.log({ authUser });
 
   if (isCheckingAuth && !authUser)
     return (
