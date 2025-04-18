@@ -78,7 +78,7 @@ io.on("connection", (socket) => {
 
   socket.on("getOnlineUsers", (userIds) => {
     console.log("Online users received:", userIds); // Add this line
-    set({ onlineUsers: userIds });  // This shouldn't be here
+    //set({ onlineUsers: userIds });  // This shouldn't be here
   });
 });
 
