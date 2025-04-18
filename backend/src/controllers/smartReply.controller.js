@@ -1,6 +1,6 @@
 import { generateSmartRepliesByIntent } from "../lib/messageAnalysis.js";
 import { analyzeConversationContext, getTopicSpecificReplies } from "../lib/conversationContext.js";
-
+import { generateSmartReplies } from "../services/aiService.js";
 // backend/src/controllers/smartReply.controller.js
 
 // Enhanced message analysis and smart reply generation
@@ -188,28 +188,36 @@ const generateSmartReplies = (message) => {
 
 export const getSmartReplies = async (req, res) => {
   try {
-    const { message, context } = req.body;
+    const { message, previousMessages } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
     
-    // Generate smart replies with context if available
-    const messageToAnalyze = typeof message === 'string' ? message : '';
-    const smartReplies = generateSmartRepliesByIntent(messageToAnalyze);
-    
-    // Log performance metrics in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Generated ${smartReplies.length} smart replies for message: "${messageToAnalyze.substring(0, 30)}..."`);
+    // Try to use AI-generated replies
+    try {
+      const aiReplies = await generateSmartReplies(message, previousMessages);
+      if (aiReplies && aiReplies.length > 0) {
+        return res.status(200).json({ 
+          replies: aiReplies,
+          source: "ai"
+        });
+      }
+    } catch (aiError) {
+      console.error("AI reply generation failed:", aiError);
+      // Continue to fallback method
     }
     
+    // Fallback to rule-based method
+    const fallbackReplies = generateSmartRepliesByIntent(message);
+    
     res.status(200).json({ 
-      replies: smartReplies,
-      success: true
+      replies: fallbackReplies,
+      source: "fallback"
     });
   } catch (error) {
     console.error("Error in getSmartReplies controller:", error);
-    res.status(500).json({ error: "Internal server error", details: error.message });
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
