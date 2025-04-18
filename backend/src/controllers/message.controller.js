@@ -4,16 +4,16 @@ import Message from "../models/message.model.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 
-import OpenAI from "openai";
-const openai = process.env.OPENAI_API_KEY ? new OpenAI() : null;
+import { summariseWithHF } from "../lib/hfSummarizer.js";   // 🆕 HF helper
 
 /* -------------------------------------------------------------------------- */
 /*                               SIDEBAR USERS                                */
 /* -------------------------------------------------------------------------- */
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const myId = req.user._id;
-    const users = await User.find({ _id: { $ne: myId } }).select("-password");
+    const users = await User.find({ _id: { $ne: req.user._id } }).select(
+      "-password"
+    );
     return res.status(200).json(users);
   } catch (err) {
     console.error(err);
@@ -51,8 +51,8 @@ export const getConversationSummary = async (req, res) => {
     const { id: otherUserId } = req.params;
     const myId = req.user._id;
 
-    // pull last 30 text messages (most‑recent first)
-    const messages = await Message.find({
+    // Pull last 40 messages with non‑empty text
+    const msgs = await Message.find({
       $or: [
         { senderId: myId, receiverId: otherUserId },
         { senderId: otherUserId, receiverId: myId },
@@ -60,46 +60,36 @@ export const getConversationSummary = async (req, res) => {
       text: { $exists: true, $ne: "" },
     })
       .sort({ createdAt: -1 })
-      .limit(30);
+      .limit(40);
 
-    if (messages.length === 0)
+    if (msgs.length === 0)
       return res.status(200).json({ summary: "No messages yet to summarise." });
 
-    const lines = messages
-      .reverse() // chronological
+    const transcript = msgs
+      .reverse()
       .map(
         (m) =>
           `${m.senderId.toString() === myId.toString() ? "You" : "Them"}: ${
             m.text
           }`
-      );
+      )
+      .join("\n");
 
-    /* ——— GPT (if key provided) ——— */
-    if (openai) {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo-0125",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Summarise the conversation in ONE paragraph (≤80 words, no bullets):",
-          },
-          { role: "user", content: lines.join("\n") },
-        ],
-      });
-      return res
-        .status(200)
-        .json({ summary: completion.choices[0].message.content.trim() });
-    }
+    /* ——— FIRST try free Hugging Face ——— */
+    const hfSummary = await summariseWithHF(transcript);
+    if (hfSummary) return res.status(200).json({ summary: hfSummary });
 
-    /* ——— Fallback: last 6 messages stitched ——— */
-    const recentSix = lines.slice(-6).join(" ");
-    return res.status(200).json({ summary: recentSix });
+    /* ——— Fallback: stitch last 6 messages ——— */
+    const quick = transcript.split("\n").slice(-6).join(" ");
+    return res.status(200).json({ summary: quick });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+/* -------------------------  (rest of file unchanged)  ---------------------- */
+/* Keep sendMessage, markMessagesAsRead, reactToMessage exactly as before...  */
 
 /* -------------------------------------------------------------------------- */
 /*                              SEND A MESSAGE                                */
