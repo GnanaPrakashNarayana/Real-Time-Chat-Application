@@ -83,6 +83,7 @@ export const createPoll = async (req, res) => {
 /*****************************************************************************************
  *  VOTE ON A POLL                                                                       *
  *****************************************************************************************/
+// backend/src/controllers/poll.controller.js - Update the votePoll function
 export const votePoll = async (req, res) => {
     try {
       const { pollId, optionId } = req.body;
@@ -90,109 +91,101 @@ export const votePoll = async (req, res) => {
   
       console.log(`Processing vote: User ${userId} voting for option ${optionId} in poll ${pollId}`);
   
+      // Find the poll
       const poll = await Poll.findById(pollId);
       if (!poll) {
-        console.log("Poll not found:", pollId);
+        console.log(`Poll not found: ${pollId}`);
         return res.status(404).json({ message: "Poll not found" });
       }
-      
+  
       if (!poll.isActive) {
-        console.log("Poll is no longer active:", pollId);
+        console.log(`Poll is no longer active: ${pollId}`);
         return res.status(400).json({ message: "This poll is no longer active" });
       }
   
-      console.log("Found poll:", poll._id, "with options:", poll.options.length);
-  
-      // Find the specific option
+      // Find the option
       const option = poll.options.id(optionId);
       if (!option) {
-        console.log("Option not found in poll:", optionId);
+        console.log(`Option not found: ${optionId}`);
         return res.status(404).json({ message: "Option not found" });
       }
   
-      // Convert user ID to string for consistent comparison
-      const userIdStr = userId.toString();
-  
       // Remove any previous vote by this user from all options
-      let userHadPreviousVote = false;
-      poll.options.forEach((opt) => {
-        const previousVoteIndex = opt.votes.findIndex(
-          voteId => voteId.toString() === userIdStr
-        );
-        
-        if (previousVoteIndex >= 0) {
-          userHadPreviousVote = true;
-          opt.votes.splice(previousVoteIndex, 1);
-          console.log(`Removed previous vote from option ${opt._id}`);
-        }
+      let previousVotes = 0;
+      poll.options.forEach(opt => {
+        const beforeLength = opt.votes.length;
+        opt.votes = opt.votes.filter(voteId => voteId.toString() !== userId.toString());
+        const afterLength = opt.votes.length;
+        previousVotes += (beforeLength - afterLength);
       });
   
-      // Add new vote to selected option
+      if (previousVotes > 0) {
+        console.log(`Removed ${previousVotes} previous votes from user ${userId}`);
+      }
+  
+      // Add new vote
       option.votes.push(userId);
-      console.log(`Added vote to option ${option._id}, new vote count: ${option.votes.length}`);
+      console.log(`Added vote to option ${optionId}, new vote count: ${option.votes.length}`);
   
-      // Mark the nested path as modified so Mongoose saves the changes
-      poll.markModified("options");
+      // Mark nested paths as modified and save
+      poll.markModified('options');
       await poll.save();
-      console.log("Poll saved successfully");
   
-      // Get populated poll with user details
-      const populatedPoll = await Poll.findById(poll._id)
+      // Get the updated poll with populated data
+      const populatedPoll = await Poll.findById(pollId)
         .populate("creator", "fullName profilePic")
         .populate("options.votes", "fullName profilePic");
   
-      if (!populatedPoll) {
-        console.error("Failed to retrieve populated poll after save");
-        return res.status(500).json({ message: "Failed to retrieve updated poll" });
-      }
+      // Get total votes for logging
+      const totalVotes = populatedPoll.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+      console.log(`Poll ${pollId} now has ${totalVotes} total votes`);
   
-      // Find the group and message for socket notification
+      // Prepare data for socket event
       const message = await GroupMessage.findById(poll.messageId);
       const group = await Group.findById(poll.groupId);
   
       if (!message) {
-        console.log("Associated message not found:", poll.messageId);
+        console.log(`Associated message not found: ${poll.messageId}`);
         return res.status(404).json({ message: "Associated message not found" });
       }
   
       if (!group) {
-        console.log("Group not found:", poll.groupId);
+        console.log(`Group not found: ${poll.groupId}`);
         return res.status(404).json({ message: "Group not found" });
       }
   
-      // Format the poll to ensure consistent data structure
+      // Format poll for consistency in response
       const formattedPoll = {
         ...populatedPoll.toObject(),
         options: populatedPoll.options.map(opt => ({
           ...opt.toObject(),
-          votes: Array.isArray(opt.votes) ? opt.votes : []
-        }))
+          votes: Array.isArray(opt.votes) ? opt.votes : [],
+          voteCount: opt.votes.length
+        })),
+        totalVotes: totalVotes
       };
   
-      // Log the formatted poll for verification
-      console.log("Formatted poll:", {
-        id: formattedPoll._id,
-        options: formattedPoll.options.map(o => ({
-          id: o._id,
-          text: o.text,
-          voteCount: o.votes.length
-        }))
-      });
-  
-      // Broadcast vote to all group members
-      group.members.forEach((memberId) => {
+      // Broadcast to all members
+      group.members.forEach(memberId => {
         const socketId = getReceiverSocketId(memberId);
         if (socketId) {
           io.to(socketId).emit("pollVote", {
             poll: formattedPoll,
             voter: { _id: userId, optionId },
             groupId: group._id,
-            messageId: message._id,
+            messageId: message._id
           });
         }
       });
   
-      // Return the updated poll
+      // Log vote counts before sending response
+      console.log("Vote counts:", formattedPoll.options.map(o => ({
+        id: o._id,
+        text: o.text,
+        votes: o.votes.length
+      })));
+  
+      // Send response
       res.status(200).json(formattedPoll);
     } catch (error) {
       console.error("Error in votePoll controller:", error);

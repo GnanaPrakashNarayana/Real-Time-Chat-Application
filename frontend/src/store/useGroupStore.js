@@ -196,68 +196,116 @@ export const useGroupStore = create((set, get) => ({
   // In useGroupStore.js - Improve the votePoll function to properly update state
   // Update this function in frontend/src/store/useGroupStore.js
   // Update this function in frontend/src/store/useGroupStore.js
+// Replace this function in frontend/src/store/useGroupStore.js
 votePoll: async (voteData) => {
   try {
-    console.log("Submitting vote:", voteData);
+    console.log("Voting with data:", voteData);
     
-    // Validate vote data before sending
-    if (!voteData.pollId || !voteData.optionId) {
-      console.error("Invalid vote data:", voteData);
-      toast.error("Invalid vote data");
+    // Immediately update the local state for responsive UI
+    // First, find the current state of the poll
+    const { groupMessages, selectedGroup } = get();
+    
+    const groupMessage = groupMessages.find(msg => 
+      msg.poll && msg.poll._id === voteData.pollId
+    );
+    
+    if (!groupMessage || !groupMessage.poll) {
+      console.error("Poll not found in state:", voteData.pollId);
       return false;
     }
     
-    const res = await axiosInstance.post("/polls/vote", voteData);
-    console.log("Vote response:", res.data);
+    const pollData = groupMessage.poll;
+    const userId = useAuthStore.getState().authUser._id;
     
-    // Verify we got a valid response before updating state
-    if (!res.data || !res.data._id || !Array.isArray(res.data.options)) {
-      console.error("Received invalid poll data:", res.data);
-      toast.error("Received invalid response from server");
-      return false;
-    }
-    
-    // Create a properly normalized poll object
-    const normalizedPoll = {
-      ...res.data,
-      options: res.data.options.map(option => ({
+    // Create an optimistic update of the poll with the new vote
+    const updatedOptions = pollData.options.map(option => {
+      // Make a deep copy of the option
+      const newOption = { 
         ...option,
-        // Ensure votes are always arrays
-        votes: Array.isArray(option.votes) ? option.votes : [],
-        // Handle potential ID inconsistencies
-        _id: option._id || option.id
-      })),
-      // Ensure creator is a valid object
-      creator: res.data.creator || { _id: "", fullName: "Unknown" }
-    };
+        votes: [...(Array.isArray(option.votes) ? option.votes : [])]
+      };
+      
+      // If this is the selected option, add the user's vote
+      if (option._id === voteData.optionId) {
+        // Check if the user already voted for this option
+        const alreadyVoted = newOption.votes.some(vote => {
+          if (typeof vote === 'string') return vote === userId;
+          return vote._id === userId;
+        });
+        
+        if (!alreadyVoted) {
+          // Add the vote - use full user object if we have it
+          const authUser = useAuthStore.getState().authUser;
+          newOption.votes.push(authUser);
+        }
+      } else {
+        // Remove the user's vote from other options
+        newOption.votes = newOption.votes.filter(vote => {
+          if (typeof vote === 'string') return vote !== userId;
+          return vote._id !== userId;
+        });
+      }
+      
+      return newOption;
+    });
     
-    // Find the message containing this poll and update it
-    set(state => {
-      const updatedMessages = state.groupMessages.map(msg => {
+    // Update local state immediately for responsive UI
+    set(state => ({
+      groupMessages: state.groupMessages.map(msg => {
         if (msg.poll && msg.poll._id === voteData.pollId) {
           return {
             ...msg,
-            poll: normalizedPoll
+            poll: {
+              ...msg.poll,
+              options: updatedOptions
+            }
           };
         }
         return msg;
-      });
-      
-      return { groupMessages: updatedMessages };
-    });
+      })
+    }));
     
-    // Force a refetch to ensure UI consistency
-    setTimeout(() => {
-      if (get().selectedGroup) {
-        get().getGroupMessages(get().selectedGroup._id);
-      }
-    }, 500);
+    // Now make the API call
+    const res = await axiosInstance.post("/polls/vote", voteData);
+    
+    // If the API call fails, we'll revert the optimistic update
+    if (!res.data || res.status !== 200) {
+      console.error("API error:", res);
+      toast.error("Failed to record your vote");
+      
+      // Revert to original state
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => {
+          if (msg.poll && msg.poll._id === voteData.pollId) {
+            return groupMessage; // Revert to original message
+          }
+          return msg;
+        })
+      }));
+      
+      return false;
+    }
+    
+    // Successful API call - update with server response for consistency
+    // Just in case the server response is different from our optimistic update
+    if (res.data && res.data.options) {
+      set(state => ({
+        groupMessages: state.groupMessages.map(msg => {
+          if (msg.poll && msg.poll._id === voteData.pollId) {
+            return {
+              ...msg,
+              poll: res.data
+            };
+          }
+          return msg;
+        })
+      }));
+    }
     
     return true;
   } catch (error) {
     console.error("Error voting on poll:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Unknown error";
-    toast.error(`Failed to vote: ${errorMessage}`);
+    toast.error("Failed to vote: " + (error.response?.data?.message || error.message));
     return false;
   }
 },
