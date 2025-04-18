@@ -372,18 +372,43 @@ export const useGroupStore = create((set, get) => ({
   },
   
   // Get smart replies for the group
-  getSmartReplies: async (message) => {
-    if (!message) return;
+  // Update this section in frontend/src/store/useChatStore.js
+
+// Smart Reply functions
+getSmartReplies: async (message) => {
+  if (!message || typeof message !== 'string' || message.trim().length < 2) return;
+  
+  set({ isLoadingSmartReplies: true });
+  try {
+    // Get recent messages for context
+    const { messages } = get();
+    const recentMessages = messages.slice(-5).map(msg => msg.text).filter(Boolean);
     
-    set({ isLoadingSmartReplies: true });
-    try {
-      const res = await axiosInstance.post("/smart-replies/generate", { message });
+    // Decide whether to use context-enhanced endpoint
+    let endpoint = "/smart-replies/generate";
+    let payload = { message };
+    
+    if (recentMessages.length > 1) {
+      endpoint = "/smart-replies/generate-with-context";
+      payload = { 
+        message, 
+        previousMessages: recentMessages 
+      };
+    }
+    
+    const res = await axiosInstance.post(endpoint, payload);
+    
+    // Verify we received valid data
+    if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
       set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
-    } catch (error) {
-      console.error("Error fetching smart replies:", error);
+    } else {
       set({ smartReplies: [], isLoadingSmartReplies: false });
     }
-  },
+  } catch (error) {
+    console.error("Error fetching smart replies:", error);
+    set({ smartReplies: [], isLoadingSmartReplies: false });
+  }
+},
   
   // Clear smart replies
   clearSmartReplies: () => {

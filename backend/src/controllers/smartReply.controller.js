@@ -1,4 +1,5 @@
 import { generateSmartRepliesByIntent } from "../lib/messageAnalysis.js";
+import { analyzeConversationContext, getTopicSpecificReplies } from "../lib/conversationContext.js";
 
 // backend/src/controllers/smartReply.controller.js
 
@@ -187,18 +188,91 @@ const generateSmartReplies = (message) => {
 
 export const getSmartReplies = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, context } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
     
-    // Use the advanced message analysis
-    const smartReplies = generateSmartRepliesByIntent(message);
+    // Generate smart replies with context if available
+    const messageToAnalyze = typeof message === 'string' ? message : '';
+    const smartReplies = generateSmartRepliesByIntent(messageToAnalyze);
     
-    res.status(200).json({ replies: smartReplies });
+    // Log performance metrics in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Generated ${smartReplies.length} smart replies for message: "${messageToAnalyze.substring(0, 30)}..."`);
+    }
+    
+    res.status(200).json({ 
+      replies: smartReplies,
+      success: true
+    });
   } catch (error) {
     console.error("Error in getSmartReplies controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: error.message });
+  }
+};
+
+export const getSmartRepliesWithContext = async (req, res) => {
+  try {
+    const { message, previousMessages } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+    
+    // Generate standard replies based on current message
+    const baseReplies = generateSmartRepliesByIntent(message);
+    
+    // If we have previous messages, enhance with context
+    if (Array.isArray(previousMessages) && previousMessages.length > 0) {
+      // Format messages for context analysis
+      const formattedMessages = previousMessages.map(text => ({ text }));
+      
+      // Add current message
+      formattedMessages.push({ text: message });
+      
+      // Analyze conversation context
+      const context = analyzeConversationContext(formattedMessages);
+      
+      // Get topic-specific replies
+      const topicReplies = getTopicSpecificReplies(context.recentTopic);
+      
+      // Combine replies based on confidence
+      let combinedReplies = [];
+      
+      // If high confidence in topic, prioritize topic replies
+      if (context.confidence > 0.7) {
+        combinedReplies = [...topicReplies, ...baseReplies];
+      } else {
+        // Mix replies based on confidence
+        const topicReplyCount = Math.ceil(context.confidence * 5); // 0-5 based on confidence
+        combinedReplies = [
+          ...topicReplies.slice(0, topicReplyCount),
+          ...baseReplies
+        ];
+      }
+      
+      // Deduplicate and limit to 5
+      const uniqueReplies = [...new Set(combinedReplies)].slice(0, 5);
+      
+      return res.status(200).json({ 
+        replies: uniqueReplies,
+        success: true,
+        context: {
+          topic: context.recentTopic,
+          confidence: context.confidence
+        }
+      });
+    }
+    
+    // If no context, just return base replies
+    res.status(200).json({ 
+      replies: baseReplies,
+      success: true 
+    });
+  } catch (error) {
+    console.error("Error in getSmartRepliesWithContext controller:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 };

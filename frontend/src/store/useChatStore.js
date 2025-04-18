@@ -355,7 +355,23 @@ export const useChatStore = create((set, get) => ({
     
     set({ isLoadingSmartReplies: true });
     try {
-      const res = await axiosInstance.post("/smart-replies/generate", { message });
+      // Get recent messages for context
+      const { messages } = get();
+      const recentMessages = messages.slice(-5).map(msg => msg.text).filter(Boolean);
+      
+      // Decide whether to use context-enhanced endpoint
+      let endpoint = "/smart-replies/generate";
+      let payload = { message };
+      
+      if (recentMessages.length > 1) {
+        endpoint = "/smart-replies/generate-with-context";
+        payload = { 
+          message, 
+          previousMessages: recentMessages 
+        };
+      }
+      
+      const res = await axiosInstance.post(endpoint, payload);
       
       // Verify we received valid data
       if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
