@@ -188,36 +188,28 @@ const generateSmartReplies = (message) => {
 
 export const getSmartReplies = async (req, res) => {
   try {
-    const { message, previousMessages } = req.body;
+    const { message, context } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
     
-    // Try to use AI-generated replies
-    try {
-      const aiReplies = await generateSmartReplies(message, previousMessages);
-      if (aiReplies && aiReplies.length > 0) {
-        return res.status(200).json({ 
-          replies: aiReplies,
-          source: "ai"
-        });
-      }
-    } catch (aiError) {
-      console.error("AI reply generation failed:", aiError);
-      // Continue to fallback method
+    // Generate smart replies with context if available
+    const messageToAnalyze = typeof message === 'string' ? message : '';
+    const smartReplies = generateSmartRepliesByIntent(messageToAnalyze);
+    
+    // Log performance metrics in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Generated ${smartReplies.length} smart replies for message: "${messageToAnalyze.substring(0, 30)}..."`);
     }
     
-    // Fallback to rule-based method
-    const fallbackReplies = generateSmartRepliesByIntent(message);
-    
     res.status(200).json({ 
-      replies: fallbackReplies,
-      source: "fallback"
+      replies: smartReplies,
+      success: true
     });
   } catch (error) {
     console.error("Error in getSmartReplies controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 };
 
