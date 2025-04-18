@@ -1,4 +1,7 @@
 // Helper function to get contextual replies based on message content
+// backend/src/controllers/smartReply.controller.js
+
+// Helper function to get contextual replies based on message content
 const generateSmartReplies = (message) => {
     if (!message) return [];
     

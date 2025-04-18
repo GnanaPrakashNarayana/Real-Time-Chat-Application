@@ -1,3 +1,4 @@
+// frontend/src/components/SmartReplySuggestions.jsx
 import { Sparkles } from "lucide-react";
 
 const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = false }) => {
