@@ -1,2 +1,3 @@
 # Allow frontend build files
 !frontend/dist/.env
+backend/.env
