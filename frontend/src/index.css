@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Apple-inspired theme */
+@import './styles/apple-theme.css';
 
-  /* Add to frontend/src/index.css */
+/* Typing animation */
 @keyframes typingAnimation {
   0% { opacity: 0.3; }
   50% { opacity: 1; }
@@ -12,8 +14,8 @@
 
 .typing-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background-color: currentColor;
   margin: 0 1px;
@@ -33,7 +35,7 @@
 /* Voice Message Animations */
 @keyframes recordPulse {
   0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.9; }
   100% { transform: scale(1); opacity: 1; }
 }
 
@@ -43,99 +45,31 @@
 
 /* Progress Bar Animation */
 .progress-bar {
-  transition: width 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Voice recorder container */
 .voice-recorder {
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
+  border-radius: var(--radius-md);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.voice-recorder.recording {
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5);
-}
-
-/* Poll animation styles */
+/* Apple-style animations */
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 
 .animate-slideIn {
-  animation: slideIn 0.3s ease-out forwards;
+  animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-.poll-option:hover {
-  transform: translateY(-1px);
-  transition: all 0.2s ease;
-}
-
-.poll-progress {
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Enhanced voice message styling */
-.voice-recorder {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.voice-recorder:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Add to frontend/src/index.css */
-
-/* Updated poll animation styles */
-.poll-option {
-  transition: all 0.2s ease-out;
-}
-
-.poll-option:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.poll-progress {
-  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Fade-in animation for poll options expansion */
-@keyframes optionExpand {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: optionExpand 0.2s ease forwards;
-}
-
-/* Add to your existing animations in index.css */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -146,5 +80,60 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Message list animations */
+.message-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Poll animations */
+.poll-option {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.poll-option:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.poll-progress {
+  transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+[data-theme="apple-dark"] ::-webkit-scrollbar-thumb,
+[data-theme="apple-midnight"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="apple-dark"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="apple-midnight"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

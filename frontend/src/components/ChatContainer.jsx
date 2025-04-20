@@ -34,6 +34,17 @@ const ChatContainer = memo(() => {
   const [error, setError] = useState(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
 
+  // Message container ref for scroll shadow
+  const messageContainerRef = useRef(null);
+  const [showTopShadow, setShowTopShadow] = useState(false);
+
+  // Handle scroll shadow effect
+  const handleMessageScroll = useCallback(() => {
+    if (messageContainerRef.current) {
+      setShowTopShadow(messageContainerRef.current.scrollTop > 10);
+    }
+  }, []);
+
   // Prevent infinite loop by tracking message count
   useEffect(() => {
     if (messages?.length !== lastMessageCount) {
@@ -114,8 +125,8 @@ const ChatContainer = memo(() => {
     
     try {
       return (
-        <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg mb-2 w-full">
-          <File className="size-5 flex-shrink-0" />
+        <div className="flex items-center gap-2 p-3 bg-base-200/70 rounded-xl mb-2 w-full shadow-apple-sm">
+          <File className="size-5 flex-shrink-0 text-primary/70" />
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-sm font-medium truncate max-w-[200px]">
               {document.name || "Untitled Document"}
@@ -130,7 +141,7 @@ const ChatContainer = memo(() => {
               target="_blank" 
               rel="noopener noreferrer" 
               download={document.name}
-              className="btn btn-circle btn-sm flex-shrink-0"
+              className="btn btn-circle btn-sm flex-shrink-0 bg-base-100/50 border-none"
               title="Download"
             >
               <Download className="size-3" />
@@ -141,7 +152,7 @@ const ChatContainer = memo(() => {
     } catch (error) {
       console.error("Error rendering document:", error);
       return (
-        <div className="p-3 bg-base-200 rounded-lg mb-2 text-sm">
+        <div className="p-3 bg-base-200/70 rounded-xl mb-2 text-sm">
           Document attachment
         </div>
       );
@@ -154,10 +165,10 @@ const ChatContainer = memo(() => {
       <div className="flex-1 flex flex-col overflow-auto">
         <ChatHeader />
         <div className="flex-1 flex items-center justify-center">
-          <div className="p-4 bg-base-200 rounded-lg text-error">
-            <p>{error}</p>
+          <div className="p-6 bg-base-200/70 rounded-xl text-error shadow-apple-sm">
+            <p className="mb-3">{error}</p>
             <button 
-              className="btn btn-sm btn-outline mt-2"
+              className="btn btn-sm btn-outline"
               onClick={() => window.location.reload()}
             >
               Refresh Page
@@ -190,7 +201,18 @@ const ChatContainer = memo(() => {
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div 
+        className={`flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth relative`}
+        ref={messageContainerRef}
+        onScroll={handleMessageScroll}
+      >
+        {/* Top shadow when scrolled */}
+        <div 
+          className={`absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-base-100/80 to-transparent pointer-events-none z-10 transition-opacity duration-200 ${
+            showTopShadow ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+
         {safeMessages.length === 0 && (
           <div className="text-center py-8 text-base-content/60">
             <p>No messages yet. Start the conversation!</p>
@@ -207,11 +229,11 @@ const ChatContainer = memo(() => {
           return (
             <div
               key={message._id}
-              className={`chat ${isFromCurrentUser ? "chat-end" : "chat-start"}`}
+              className={`chat ${isFromCurrentUser ? "chat-end" : "chat-start"} animate-fadeIn`}
               ref={index === safeMessages.length - 1 ? messageEndRef : null}
             >
               <div className="chat-image avatar">
-                <div className="size-10 rounded-full border">
+                <div className="size-9 rounded-full border border-base-300/30 overflow-hidden shadow-apple-sm">
                   <img
                     src={
                       isFromCurrentUser
@@ -236,15 +258,19 @@ const ChatContainer = memo(() => {
                 {isFromCurrentUser && (
                   <span className="ml-1">
                     {message.read ? (
-                      <CheckCheck size={14} className="text-blue-500" />
+                      <CheckCheck size={14} className="text-primary/80" />
                     ) : (
-                      <Check size={14} className="text-gray-500" />
+                      <Check size={14} className="text-base-content/40" />
                     )}
                   </span>
                 )}
               </div>
               
-              <div className="chat-bubble">
+              <div className={`chat-bubble ${
+                isFromCurrentUser
+                  ? "bg-primary text-primary-content"
+                  : "bg-base-200/70 text-base-content"
+              } shadow-apple-sm`}>
                 {/* Voice message */}
                 {message.voiceMessage && message.voiceMessage.url && (
                   <div className="mb-2">
@@ -263,7 +289,7 @@ const ChatContainer = memo(() => {
                   <img
                     src={message.image}
                     alt="Attachment"
-                    className="sm:max-w-[200px] rounded-md mb-2"
+                    className="sm:max-w-[200px] rounded-lg mb-2 shadow-apple-sm"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = "/placeholder-image.png";
@@ -294,9 +320,9 @@ const ChatContainer = memo(() => {
         
         {/* Typing indicator */}
         {isTyping && (
-          <div className="chat chat-start">
+          <div className="chat chat-start animate-fadeIn">
             <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
+              <div className="size-9 rounded-full border border-base-300/30 shadow-apple-sm">
                 <img
                   src={selectedUser?.profilePic || "/avatar.png"}
                   alt="profile pic"
@@ -307,7 +333,7 @@ const ChatContainer = memo(() => {
                 />
               </div>
             </div>
-            <div className="chat-bubble chat-bubble-primary bg-opacity-50 flex gap-1">
+            <div className="chat-bubble bg-base-200/50 shadow-apple-sm flex gap-1 min-h-0 h-8 items-center">
               <span className="typing-dot"></span>
               <span className="typing-dot"></span>
               <span className="typing-dot"></span>

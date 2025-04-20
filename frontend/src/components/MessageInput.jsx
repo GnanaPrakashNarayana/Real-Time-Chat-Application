@@ -1,10 +1,8 @@
-// frontend/src/components/MessageInput.jsx
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X, Paperclip, Mic } from "lucide-react";
 import toast from "react-hot-toast";
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import VoiceRecorder from "./VoiceRecorder";
-import { timeFunction } from "../lib/performanceMonitor";
 
 // Performance optimization with memo
 const MessageInput = memo(() => {
@@ -142,13 +140,10 @@ const MessageInput = memo(() => {
     if (documentInputRef.current) documentInputRef.current.value = "";
 
     try {
-      // Use the timeFunction utility to monitor performance
-      await timeFunction('sendMessage', async () => {
-        return await sendMessage({
-          text: messageText,  // Use the stored text value
-          image: imagePreview,
-          document: messageDocument
-        });
+      await sendMessage({
+        text: messageText,  // Use the stored text value
+        image: imagePreview,
+        document: messageDocument
       });
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -185,19 +180,19 @@ const MessageInput = memo(() => {
   };
 
   return (
-    <div className="p-4 w-full">
+    <div className="p-4 w-full border-t border-base-300/30 bg-base-100/80 backdrop-blur-sm">
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
             <img
               src={imagePreview}
               alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+              className="w-20 h-20 object-cover rounded-lg shadow-apple-sm border border-base-300/30"
             />
             <button
               onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-100
+              flex items-center justify-center shadow-apple-sm border border-base-300/30"
               type="button"
             >
               <X className="size-3" />
@@ -207,15 +202,15 @@ const MessageInput = memo(() => {
       )}
 
       {documentName && (
-        <div className="mb-3 flex items-center gap-2 p-2 bg-base-200 rounded-lg">
+        <div className="mb-3 flex items-center gap-2 p-3 bg-base-200/50 rounded-lg shadow-apple-sm">
           <div className="flex-1 flex items-center gap-2">
-            <Paperclip className="size-4" />
+            <Paperclip className="size-4 text-primary/70" />
             <span className="text-sm truncate">{documentName.name}</span>
           </div>
           <button
             onClick={removeDocument}
-            className="w-5 h-5 rounded-full bg-base-300
-            flex items-center justify-center"
+            className="w-5 h-5 rounded-full bg-base-100
+            flex items-center justify-center shadow-apple-sm border border-base-300/30"
             type="button"
           >
             <X className="size-3" />
@@ -233,7 +228,7 @@ const MessageInput = memo(() => {
           <div className="flex-1 flex gap-2">
             <input
               type="text"
-              className="w-full input input-bordered rounded-lg input-sm sm:input-md"
+              className="w-full input rounded-full shadow-apple-sm bg-base-200/50 border-none focus:ring-2 focus:ring-primary/20"
               placeholder="Type a message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -255,40 +250,40 @@ const MessageInput = memo(() => {
 
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle"
+              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending}
               title="Send image"
             >
-              <Image size={20} />
+              <Image size={18} className="text-primary/80" />
             </button>
 
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle"
+              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
               onClick={() => documentInputRef.current?.click()}
               disabled={isSending}
               title="Send document"
             >
-              <Paperclip size={20} />
+              <Paperclip size={18} className="text-primary/80" />
             </button>
             
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle"
+              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
               onClick={() => setIsRecording(true)}
               disabled={isSending}
               title="Record voice message"
             >
-              <Mic size={20} />
+              <Mic size={18} className="text-primary/80" />
             </button>
           </div>
           <button
             type="submit"
-            className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
+            className={`btn btn-circle shadow-apple-sm ${isSending ? 'bg-base-200 loading' : 'bg-primary text-primary-content'}`}
             disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
           >
-            {!isSending && <Send size={22} />}
+            {!isSending && <Send size={18} />}
           </button>
         </form>
       )}

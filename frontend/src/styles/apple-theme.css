@@ -1,0 +1,312 @@
+/* Apple-inspired theme */
+[data-theme="apple-light"] {
+    /* Base colors */
+    --color-bg: #ffffff;
+    --color-bg-secondary: #f5f5f7;
+    --color-text: #1d1d1f;
+    --color-text-secondary: #86868b;
+    --color-border: #d2d2d7;
+    --color-primary: #0071e3;
+    --color-primary-hover: #0077ed;
+    --color-primary-focus: #0068d1;
+    --color-success: #34c759;
+    --color-warning: #ff9f0a;
+    --color-error: #ff3b30;
+    --color-info: #5ac8fa;
+    
+    /* UI elements */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    
+    /* Component specific */
+    --card-bg: #ffffff;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --input-border: #d2d2d7;
+    --input-focus: #0071e3;
+    
+    /* DaisyUI overrides */
+    --p: 211 100% 45%;
+    --pc: 0 0% 100%;
+    --s: 211 100% 35%;
+    --sc: 0 0% 100%;
+    --a: 262 83% 58%;
+    --ac: 0 0% 100%;
+    --n: 213 34% 15%;
+    --nc: 0 0% 100%;
+    --b1: 0 0% 100%;
+    --b2: 210 20% 98%;
+    --b3: 216 12% 94%;
+    --bc: 213 34% 15%;
+  
+    /* Base colors */ 
+    --base-100: var(--color-bg);
+    --base-200: var(--color-bg-secondary);
+    --base-300: var(--color-border);
+    --base-content: var(--color-text);
+    
+    /* Fonts */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  }
+  
+  [data-theme="apple-dark"] {
+    /* Base colors */
+    --color-bg: #000000;
+    --color-bg-secondary: #1d1d1f;
+    --color-text: #f5f5f7;
+    --color-text-secondary: #86868b;
+    --color-border: #38383a;
+    --color-primary: #0a84ff;
+    --color-primary-hover: #0591ff;
+    --color-primary-focus: #007aff;
+    --color-success: #30d158;
+    --color-warning: #ff9f0a;
+    --color-error: #ff453a;
+    --color-info: #64d2ff;
+    
+    /* UI elements remain the same */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    
+    /* Component specific */
+    --card-bg: #1d1d1f;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --input-bg: #1d1d1f;
+    --input-border: #38383a;
+    --input-focus: #0a84ff;
+    
+    /* DaisyUI overrides */
+    --p: 211 100% 52%;
+    --pc: 0 0% 100%;
+    --s: 211 100% 42%;
+    --sc: 0 0% 100%;
+    --a: 262 83% 65%;
+    --ac: 0 0% 100%;
+    --n: 213 34% 92%;
+    --nc: 213 34% 15%;
+    --b1: 0 0% 0%;
+    --b2: 213 34% 10%;
+    --b3: 213 34% 15%;
+    --bc: 213 34% 92%;
+  
+    /* Base colors */ 
+    --base-100: var(--color-bg);
+    --base-200: var(--color-bg-secondary);
+    --base-300: var(--color-border);
+    --base-content: var(--color-text);
+    
+    /* Fonts */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  }
+  
+  [data-theme="apple-midnight"] {
+    /* Base colors */
+    --color-bg: #000000;
+    --color-bg-secondary: #1c1c1e;
+    --color-text: #f5f5f7;
+    --color-text-secondary: #8e8e93;
+    --color-border: #38383a;
+    --color-primary: #0a84ff;
+    --color-primary-hover: #0591ff;
+    --color-primary-focus: #007aff;
+    --color-success: #30d158;
+    --color-warning: #ff9f0a;
+    --color-error: #ff453a;
+    --color-info: #64d2ff;
+    
+    /* UI elements */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    
+    /* Component specific */
+    --card-bg: #1c1c1e;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --input-bg: #1c1c1e;
+    --input-border: #38383a;
+    --input-focus: #0a84ff;
+    
+    /* DaisyUI overrides */
+    --p: 211 100% 52%;
+    --pc: 0 0% 100%;
+    --s: 211 100% 42%;
+    --sc: 0 0% 100%;
+    --a: 262 83% 65%;
+    --ac: 0 0% 100%;
+    --n: 213 34% 92%;
+    --nc: 213 34% 15%;
+    --b1: 0 0% 0%;
+    --b2: 213 34% 8%;
+    --b3: 213 34% 12%;
+    --bc: 213 34% 92%;
+  
+    /* Base colors */ 
+    --base-100: var(--color-bg);
+    --base-200: var(--color-bg-secondary);
+    --base-300: var(--color-border);
+    --base-content: var(--color-text);
+    
+    /* Fonts */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  }
+  
+  /* Apple UI Component Styles */
+  
+  /* Buttons */
+  .btn {
+    font-weight: 500;
+    text-transform: none;
+    border-radius: var(--radius-full);
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    height: 40px;
+    min-height: 40px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .btn-primary {
+    background-color: var(--color-primary);
+    border: none;
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary:active {
+    background-color: var(--color-primary-focus);
+    transform: translateY(0);
+  }
+  
+  .btn-outline {
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-primary);
+  }
+  
+  .btn-outline:hover {
+    background-color: rgba(0, 113, 227, 0.05);
+    border-color: var(--color-primary);
+  }
+  
+  .btn-ghost {
+    color: var(--color-primary);
+  }
+  
+  .btn-ghost:hover {
+    background-color: rgba(0, 113, 227, 0.05);
+  }
+  
+  .btn-circle {
+    border-radius: 50%;
+  }
+  
+  .btn-sm {
+    height: 32px;
+    min-height: 32px;
+    font-size: 0.875rem;
+  }
+  
+  /* Inputs */
+  .input {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+  }
+  
+  .input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.1);
+    outline: none;
+  }
+  
+  .input-bordered {
+    border: 1px solid var(--input-border);
+  }
+  
+  /* Cards */
+  .card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+  }
+  
+  /* Chat bubbles */
+  .chat-bubble {
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+  }
+  
+  .chat-bubble-primary {
+    background-color: var(--color-primary);
+    color: white;
+  }
+  
+  .chat-start .chat-bubble {
+    border-bottom-left-radius: 0.25rem;
+  }
+  
+  .chat-end .chat-bubble {
+    border-bottom-right-radius: 0.25rem;
+  }
+  
+  /* Modern frosted glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  [data-theme="apple-dark"] .glass,
+  [data-theme="apple-midnight"] .glass {
+    background: rgba(28, 28, 30, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease forwards;
+  }
+  
+  /* Smooth transitions */
+  .transition-all {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  /* Apple-style shadows */
+  .shadow-apple-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .shadow-apple-md {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-apple-lg {
+    box-shadow: var(--shadow-lg);
+  }

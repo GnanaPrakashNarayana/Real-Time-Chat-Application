@@ -1,4 +1,7 @@
 export const THEMES = [
+  "apple-light",
+  "apple-dark",
+  "apple-midnight",
   "light",
   "dark",
   "cupcake",
