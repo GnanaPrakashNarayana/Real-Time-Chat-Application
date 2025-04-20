@@ -137,3 +137,14 @@
 [data-theme="apple-midnight"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Add to frontend/src/index.css */
+@keyframes highlightBookmark {
+  0% { background-color: rgba(var(--p), 0.1); }
+  50% { background-color: rgba(var(--p), 0.3); }
+  100% { background-color: transparent; }
+}
+
+.highlight-message {
+  animation: highlightBookmark 2s ease-out;
+}

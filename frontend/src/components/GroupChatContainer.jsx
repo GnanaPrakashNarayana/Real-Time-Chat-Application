@@ -1,5 +1,5 @@
 // frontend/src/components/GroupChatContainer.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useGroupStore } from "../store/useGroupStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
@@ -8,8 +8,8 @@ import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
-import ConversationSummaryModal from "./modals/ConversationSummaryModal"; // Import the new component
 import { FileText, Download } from "lucide-react";
+import BookmarkButton from "./BookmarkButton"; // Import the new component
 
 const GroupChatContainer = () => {
   const {
@@ -24,9 +24,6 @@ const GroupChatContainer = () => {
   
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
-  
-  // Add state for the summary modal
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
   
   // Get typing users
   const typingUserIds = getGroupTypingUsers();
@@ -45,7 +42,7 @@ const GroupChatContainer = () => {
   if (isLoadingMessages) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <GroupHeader onShowSummary={() => setShowSummaryModal(true)} />
+        <GroupHeader />
         <MessageSkeleton />
         <GroupMessageInput />
       </div>
@@ -59,11 +56,12 @@ const GroupChatContainer = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <GroupHeader onShowSummary={() => setShowSummaryModal(true)} />
+      <GroupHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {groupMessages.map((message, index) => (
           <div
+            id={`message-${message._id}`} // Add ID for scrolling to bookmarked messages
             key={message._id}
             className={`chat ${message.senderId._id === authUser._id ? "chat-end" : "chat-start"}`}
             ref={index === groupMessages.length - 1 ? messageEndRef : null}
@@ -83,8 +81,29 @@ const GroupChatContainer = () => {
               <time className="text-xs opacity-50">
                 {formatMessageTime(message.createdAt)}
               </time>
+              
+              {/* Add BookmarkButton */}
+              <div className="ml-1">
+                <BookmarkButton 
+                  message={message} 
+                  conversationId={selectedGroup._id}
+                  conversationType="Group"
+                  small={true}
+                />
+              </div>
             </div>
-            <div className="chat-bubble flex flex-col">
+            <div className="chat-bubble relative flex flex-col">
+              {/* Bookmark indicator at the top of the bubble */}
+              <div className="absolute -top-2 left-2">
+                <BookmarkButton 
+                  message={message} 
+                  conversationId={selectedGroup._id}
+                  conversationType="Group"
+                  showBookmarked={true}
+                  small={true}
+                />
+              </div>
+            
               {/* Voice message */}
               {message.voiceMessage && message.voiceMessage.url && (
                 <div className="mb-2">
@@ -165,14 +184,6 @@ const GroupChatContainer = () => {
       </div>
 
       <GroupMessageInput />
-      
-      {/* Conversation Summary Modal */}
-      <ConversationSummaryModal 
-        isOpen={showSummaryModal}
-        onClose={() => setShowSummaryModal(false)}
-        messages={groupMessages}
-        otherUser={{ fullName: selectedGroup.name }}
-      />
     </div>
   );
 };

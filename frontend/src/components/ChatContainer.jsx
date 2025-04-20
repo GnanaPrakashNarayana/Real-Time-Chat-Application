@@ -7,10 +7,10 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import MessageReactions from "./MessageReactions";
 import AudioPlayer from "./AudioPlayer";
-import ConversationSummaryModal from "./modals/ConversationSummaryModal"; // Import the new component
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
+import BookmarkButton from "./BookmarkButton"; // Import the new component
 
 const ChatContainer = () => {
   const {
@@ -26,9 +26,6 @@ const ChatContainer = () => {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
-  
-  // Add state for the summary modal
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   useEffect(() => {
     getMessages(selectedUser._id);
@@ -92,7 +89,7 @@ const ChatContainer = () => {
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <ChatHeader onShowSummary={() => setShowSummaryModal(true)} />
+        <ChatHeader />
         <MessageSkeleton />
         <MessageInput />
       </div>
@@ -103,11 +100,12 @@ const ChatContainer = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <ChatHeader onShowSummary={() => setShowSummaryModal(true)} />
+      <ChatHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
+            id={`message-${message._id}`} // Add ID for scrolling to bookmarked messages
             key={message._id}
             className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
             ref={index === messages.length - 1 ? messageEndRef : null}
@@ -139,9 +137,30 @@ const ChatContainer = () => {
                   )}
                 </span>
               )}
+              
+              {/* Add BookmarkButton */}
+              <div className="ml-2">
+                <BookmarkButton 
+                  message={message} 
+                  conversationId={selectedUser._id}
+                  conversationType="User"
+                  small={true}
+                />
+              </div>
             </div>
             
-            <div className="chat-bubble">
+            <div className="chat-bubble relative group">
+              {/* Bookmark indicator at the top of the bubble */}
+              <div className="absolute -top-2 left-2">
+                <BookmarkButton 
+                  message={message} 
+                  conversationId={selectedUser._id}
+                  conversationType="User"
+                  showBookmarked={true}
+                  small={true}
+                />
+              </div>
+              
               {/* Voice message */}
               {message.voiceMessage && message.voiceMessage.url && (
                 <div className="mb-2">
@@ -206,14 +225,6 @@ const ChatContainer = () => {
       </div>
 
       <MessageInput />
-      
-      {/* Conversation Summary Modal */}
-      <ConversationSummaryModal 
-        isOpen={showSummaryModal}
-        onClose={() => setShowSummaryModal(false)}
-        messages={messages}
-        otherUser={selectedUser}
-      />
     </div>
   );
 };

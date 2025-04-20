@@ -16,6 +16,7 @@ import groupRoutes from "./routes/group.route.js";
 import pollRoutes from "./routes/poll.route.js";
 import smartReplyRoutes from "./routes/smartReply.route.js";
 import helperRoutes from "./routes/helper.route.js";
+import bookmarkRoutes from "./routes/bookmark.route.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -62,6 +63,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/smart-replies", smartReplyRoutes);
 app.use("/api/helper", helperRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
 
 /* simple uptime check */
 app.get("/api/health", (_, res) => res.json({ status: "ok" }));
