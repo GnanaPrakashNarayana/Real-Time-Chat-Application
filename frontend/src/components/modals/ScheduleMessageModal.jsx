@@ -64,7 +64,7 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
             </label>
             <textarea 
               id="schedule-message-text"
-              className="textarea textarea-bordered w-full resize-none bg-base-100 focus:ring-1 focus:ring-primary focus:border-primary" 
+              className="textarea textarea-bordered w-full resize-none bg-base-100 focus:ring-1 focus:ring-primary focus:border-primary rounded-lg" 
               placeholder="Type your message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -101,9 +101,7 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
           
           <div>
             <h4 className="text-sm font-medium text-base-content/80 mb-2">Schedule for</h4>
-            <div className="bg-base-200/50 rounded-lg p-4 border border-base-300">
-              <DateTimePicker onSelect={setScheduledFor} disabled={isCreating} />
-            </div>
+            <DateTimePicker onSelect={setScheduledFor} disabled={isCreating} />
           </div>
           
           <div className="pt-4 border-t border-base-300 mt-auto flex-shrink-0">
