@@ -1,10 +1,10 @@
 // frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
-import { Image, Send, X, Paperclip, Mic, BarChart3 } from "lucide-react";
+import { Image, Send, X, Paperclip, Mic, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import VoiceRecorder from "./VoiceRecorder";
-import PollCreator from "./polls/PollCreator";
+import ScheduleMessageModal from "./modals/ScheduleMessageModal";
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
@@ -13,11 +13,11 @@ const GroupMessageInput = () => {
   const [documentData, setDocumentData] = useState(null); // Store base64 data
   const [isRecording, setIsRecording] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
-  const { sendGroupMessage, sendGroupTypingStatus } = useGroupStore();
+  const { sendGroupMessage, sendGroupTypingStatus, selectedGroup } = useGroupStore();
   const typingTimeoutRef = useRef(null);
 
   // Handle typing indicator
@@ -166,6 +166,16 @@ const GroupMessageInput = () => {
     }
   };
 
+  // Open schedule modal
+  const handleOpenScheduleModal = () => {
+    if (!text.trim() && !imagePreview && !documentName) {
+      toast.error("Please enter a message to schedule");
+      return;
+    }
+    
+    setShowScheduleModal(true);
+  };
+
   return (
     <div className="p-4 w-full">
       {imagePreview && (
@@ -205,12 +215,6 @@ const GroupMessageInput = () => {
         </div>
       )}
       
-      {showPollCreator && (
-        <div className="mb-3">
-          <PollCreator onClose={() => setShowPollCreator(false)} />
-        </div>
-      )}
-      
       {isRecording ? (
         <VoiceRecorder
           onSend={handleSendVoiceMessage}
@@ -245,7 +249,7 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isSending || showPollCreator}
+              disabled={isSending}
               title="Send image"
             >
               <Image size={20} />
@@ -255,7 +259,7 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => documentInputRef.current?.click()}
-              disabled={isSending || showPollCreator}
+              disabled={isSending}
               title="Send document"
             >
               <Paperclip size={20} />
@@ -265,7 +269,7 @@ const GroupMessageInput = () => {
               type="button"
               className="hidden sm:flex btn btn-circle"
               onClick={() => setIsRecording(true)}
-              disabled={isSending || showPollCreator}
+              disabled={isSending}
               title="Record voice message"
             >
               <Mic size={20} />
@@ -274,22 +278,39 @@ const GroupMessageInput = () => {
             <button
               type="button"
               className="hidden sm:flex btn btn-circle"
-              onClick={() => setShowPollCreator(!showPollCreator)}
-              disabled={isSending || isRecording}
-              title="Create a poll"
+              onClick={handleOpenScheduleModal}
+              disabled={isSending || (!text.trim() && !imagePreview && !documentName)}
+              title="Schedule message"
             >
-              <BarChart3 size={20} />
+              <Clock size={20} />
             </button>
           </div>
           <button
             type="submit"
             className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
-            disabled={(!text.trim() && !imagePreview && !documentName) || isSending || showPollCreator}
+            disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
           >
             {!isSending && <Send size={22} />}
           </button>
         </form>
       )}
+      
+      {/* Schedule Message Modal */}
+      <ScheduleMessageModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        groupId={selectedGroup?._id}
+        message={{
+          text,
+          image: imagePreview,
+          document: documentName ? {
+            data: documentData,
+            name: documentName.name,
+            type: documentName.type,
+            size: documentName.size
+          } : null
+        }}
+      />
     </div>
   );
 };

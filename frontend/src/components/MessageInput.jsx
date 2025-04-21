@@ -1,26 +1,28 @@
+// frontend/src/components/MessageInput.jsx
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X, Paperclip, Mic } from "lucide-react";
+import { Image, Send, X, Paperclip, Mic, Clock } from "lucide-react";
 import toast from "react-hot-toast";
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import VoiceRecorder from "./VoiceRecorder";
+import ScheduleMessageModal from "./modals/ScheduleMessageModal";
 
-// Performance optimization with memo
-const MessageInput = memo(() => {
+const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [documentName, setDocumentName] = useState(null); // Just store name, not file object
   const [documentData, setDocumentData] = useState(null); // Store base64 data
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
-  const { sendMessage, sendTypingStatus } = useChatStore();
+  const { sendMessage, sendTypingStatus, selectedUser } = useChatStore();
   const typingTimeoutRef = useRef(null);
 
-  // Performance optimization with useCallback
-  const handleTypingStatus = useCallback((newText) => {
-    if (newText.trim()) {
+  // Handle typing indicator
+  useEffect(() => {
+    if (text.trim()) {
       sendTypingStatus(true);
       
       // Clear previous timeout
@@ -35,11 +37,6 @@ const MessageInput = memo(() => {
     } else {
       sendTypingStatus(false);
     }
-  }, [sendTypingStatus]);
-
-  // Handle typing indicator
-  useEffect(() => {
-    handleTypingStatus(text);
     
     // Cleanup
     return () => {
@@ -48,20 +45,14 @@ const MessageInput = memo(() => {
       }
       sendTypingStatus(false);
     };
-  }, [text, handleTypingStatus, sendTypingStatus]);
+  }, [text, sendTypingStatus]);
 
-  const handleImageChange = useCallback((e) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
-      return;
-    }
-
-    // Check file size
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be less than 5MB");
       return;
     }
 
@@ -70,10 +61,10 @@ const MessageInput = memo(() => {
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
-  }, []);
+  };
 
-  const handleDocumentChange = useCallback((e) => {
-    const file = e.target.files?.[0];
+  const handleDocumentChange = (e) => {
+    const file = e.target.files[0];
     if (!file) return;
     
     // Check file size (limit to 10MB)
@@ -100,18 +91,18 @@ const MessageInput = memo(() => {
       setDocumentName(null);
     };
     reader.readAsDataURL(file);
-  }, []);
+  };
 
-  const removeImage = useCallback(() => {
+  const removeImage = () => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  }, []);
+  };
 
-  const removeDocument = useCallback(() => {
+  const removeDocument = () => {
     setDocumentName(null);
     setDocumentData(null);
     if (documentInputRef.current) documentInputRef.current.value = "";
-  }, []);
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -179,20 +170,30 @@ const MessageInput = memo(() => {
     }
   };
 
+  // Open schedule modal
+  const handleOpenScheduleModal = () => {
+    if (!text.trim() && !imagePreview && !documentName) {
+      toast.error("Please enter a message to schedule");
+      return;
+    }
+    
+    setShowScheduleModal(true);
+  };
+
   return (
-    <div className="p-4 w-full border-t border-base-300/30 bg-base-100/80 backdrop-blur-sm">
+    <div className="p-4 w-full">
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
             <img
               src={imagePreview}
               alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg shadow-apple-sm border border-base-300/30"
+              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
             />
             <button
               onClick={removeImage}
-              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-100
-              flex items-center justify-center shadow-apple-sm border border-base-300/30"
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
+              flex items-center justify-center"
               type="button"
             >
               <X className="size-3" />
@@ -202,15 +203,15 @@ const MessageInput = memo(() => {
       )}
 
       {documentName && (
-        <div className="mb-3 flex items-center gap-2 p-3 bg-base-200/50 rounded-lg shadow-apple-sm">
+        <div className="mb-3 flex items-center gap-2 p-2 bg-base-200 rounded-lg">
           <div className="flex-1 flex items-center gap-2">
-            <Paperclip className="size-4 text-primary/70" />
+            <Paperclip className="size-4" />
             <span className="text-sm truncate">{documentName.name}</span>
           </div>
           <button
             onClick={removeDocument}
-            className="w-5 h-5 rounded-full bg-base-100
-            flex items-center justify-center shadow-apple-sm border border-base-300/30"
+            className="w-5 h-5 rounded-full bg-base-300
+            flex items-center justify-center"
             type="button"
           >
             <X className="size-3" />
@@ -228,7 +229,7 @@ const MessageInput = memo(() => {
           <div className="flex-1 flex gap-2">
             <input
               type="text"
-              className="w-full input rounded-full shadow-apple-sm bg-base-200/50 border-none focus:ring-2 focus:ring-primary/20"
+              className="w-full input input-bordered rounded-lg input-sm sm:input-md"
               placeholder="Type a message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -250,47 +251,72 @@ const MessageInput = memo(() => {
 
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
+              className="hidden sm:flex btn btn-circle"
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending}
               title="Send image"
             >
-              <Image size={18} className="text-primary/80" />
+              <Image size={20} />
             </button>
 
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
+              className="hidden sm:flex btn btn-circle"
               onClick={() => documentInputRef.current?.click()}
               disabled={isSending}
               title="Send document"
             >
-              <Paperclip size={18} className="text-primary/80" />
+              <Paperclip size={20} />
             </button>
             
             <button
               type="button"
-              className="hidden sm:flex btn btn-circle shadow-apple-sm bg-base-200/50 border-none hover:bg-base-200"
+              className="hidden sm:flex btn btn-circle"
               onClick={() => setIsRecording(true)}
               disabled={isSending}
               title="Record voice message"
             >
-              <Mic size={18} className="text-primary/80" />
+              <Mic size={20} />
+            </button>
+            
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={handleOpenScheduleModal}
+              disabled={isSending || (!text.trim() && !imagePreview && !documentName)}
+              title="Schedule message"
+            >
+              <Clock size={20} />
             </button>
           </div>
           <button
             type="submit"
-            className={`btn btn-circle shadow-apple-sm ${isSending ? 'bg-base-200 loading' : 'bg-primary text-primary-content'}`}
+            className={`btn btn-sm btn-circle ${isSending ? 'loading' : ''}`}
             disabled={(!text.trim() && !imagePreview && !documentName) || isSending}
           >
-            {!isSending && <Send size={18} />}
+            {!isSending && <Send size={22} />}
           </button>
         </form>
       )}
+      
+      {/* Schedule Message Modal */}
+      <ScheduleMessageModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        receiverId={selectedUser?._id}
+        message={{
+          text,
+          image: imagePreview,
+          document: documentName ? {
+            data: documentData,
+            name: documentName.name,
+            type: documentName.type,
+            size: documentName.size
+          } : null
+        }}
+      />
     </div>
   );
-});
-
-MessageInput.displayName = 'MessageInput';
+};
 
 export default MessageInput;
