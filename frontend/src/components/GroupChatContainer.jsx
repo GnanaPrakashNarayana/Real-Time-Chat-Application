@@ -9,7 +9,7 @@ import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
 import { FileText, Download } from "lucide-react";
-import BookmarkButton from "./BookmarkButton"; // Import the new component
+import BookmarkButton from "./BookmarkButton";
 
 const GroupChatContainer = () => {
   const {
@@ -49,11 +49,6 @@ const GroupChatContainer = () => {
     );
   }
 
-  // Get members by ID for showing who read messages
-  const getMemberById = (memberId) => {
-    return selectedGroup.members.find(m => m._id === memberId);
-  };
-
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <GroupHeader />
@@ -61,7 +56,7 @@ const GroupChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {groupMessages.map((message, index) => (
           <div
-            id={`message-${message._id}`} // Add ID for scrolling to bookmarked messages
+            id={`message-${message._id}`}
             key={message._id}
             className={`chat ${message.senderId._id === authUser._id ? "chat-end" : "chat-start"}`}
             ref={index === groupMessages.length - 1 ? messageEndRef : null}
@@ -74,16 +69,17 @@ const GroupChatContainer = () => {
                 />
               </div>
             </div>
-            <div className="chat-header mb-1 flex items-center gap-2">
-              <span className="font-medium text-xs">
-                {message.senderId.fullName}
-              </span>
-              <time className="text-xs opacity-50">
-                {formatMessageTime(message.createdAt)}
-              </time>
-              
-              {/* Add BookmarkButton */}
-              <div className="ml-1">
+            
+            <div className="chat-header">
+              <div className="chat-header-content">
+                <span className="font-medium text-xs">
+                  {message.senderId.fullName}
+                </span>
+                <time className="chat-timestamp">
+                  {formatMessageTime(message.createdAt)}
+                </time>
+                
+                {/* Add BookmarkButton */}
                 <BookmarkButton 
                   message={message} 
                   conversationId={selectedGroup._id}
@@ -92,7 +88,8 @@ const GroupChatContainer = () => {
                 />
               </div>
             </div>
-            <div className="chat-bubble relative flex flex-col">
+            
+            <div className="chat-bubble">
               {/* Bookmark indicator at the top of the bubble */}
               <div className="absolute -top-2 left-2">
                 <BookmarkButton 

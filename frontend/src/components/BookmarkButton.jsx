@@ -103,9 +103,9 @@ const BookmarkButton = ({
   // If already bookmarked and showing the bookmarked icon
   if (isBookmarked && bookmark && showBookmarked) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="bookmark-indicator">
         <Bookmark className={`${small ? 'size-3.5' : 'size-4'} text-primary fill-primary`} />
-        {bookmark.name && <span className="text-xs">{bookmark.name}</span>}
+        {bookmark.name && <span className="bookmark-label">{bookmark.name}</span>}
       </div>
     );
   }
@@ -113,7 +113,7 @@ const BookmarkButton = ({
   // Regular bookmark button
   return (
     <button
-      className={`btn btn-ghost ${small ? 'btn-xs' : 'btn-sm'} btn-circle`}
+      className={`btn btn-ghost ${small ? 'btn-xs' : 'btn-sm'} btn-circle chat-actions`}
       onClick={handleToggleBookmark}
       title={isBookmarked ? "Remove bookmark" : "Bookmark this message"}
     >

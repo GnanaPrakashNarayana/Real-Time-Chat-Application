@@ -1,6 +1,6 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -10,7 +10,7 @@ import AudioPlayer from "./AudioPlayer";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
-import BookmarkButton from "./BookmarkButton"; // Import the new component
+import BookmarkButton from "./BookmarkButton"; 
 
 const ChatContainer = () => {
   const {
@@ -105,7 +105,7 @@ const ChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
-            id={`message-${message._id}`} // Add ID for scrolling to bookmarked messages
+            id={`message-${message._id}`}
             key={message._id}
             className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
             ref={index === messages.length - 1 ? messageEndRef : null}
@@ -122,24 +122,25 @@ const ChatContainer = () => {
                 />
               </div>
             </div>
-            <div className="chat-header mb-1 flex items-center">
-              <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
-              </time>
-              
-              {/* Show read status for sent messages */}
-              {message.senderId === authUser._id && (
-                <span className="ml-1">
-                  {message.read ? (
-                    <CheckCheck size={14} className="text-blue-500" />
-                  ) : (
-                    <Check size={14} className="text-gray-500" />
-                  )}
-                </span>
-              )}
-              
-              {/* Add BookmarkButton */}
-              <div className="ml-2">
+            
+            <div className="chat-header">
+              <div className="chat-header-content">
+                <time className="chat-timestamp">
+                  {formatMessageTime(message.createdAt)}
+                </time>
+                
+                {/* Show read status for sent messages */}
+                {message.senderId === authUser._id && (
+                  <span>
+                    {message.read ? (
+                      <CheckCheck size={14} className="text-blue-500" />
+                    ) : (
+                      <Check size={14} className="text-gray-500" />
+                    )}
+                  </span>
+                )}
+                
+                {/* Add BookmarkButton */}
                 <BookmarkButton 
                   message={message} 
                   conversationId={selectedUser._id}
@@ -149,7 +150,7 @@ const ChatContainer = () => {
               </div>
             </div>
             
-            <div className="chat-bubble relative group">
+            <div className="chat-bubble">
               {/* Bookmark indicator at the top of the bubble */}
               <div className="absolute -top-2 left-2">
                 <BookmarkButton 

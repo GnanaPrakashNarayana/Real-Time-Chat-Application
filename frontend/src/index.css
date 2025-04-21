@@ -2,10 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Apple-inspired theme */
-@import './styles/apple-theme.css';
-
-/* Typing animation */
+/* Add to frontend/src/index.css */
 @keyframes typingAnimation {
   0% { opacity: 0.3; }
   50% { opacity: 1; }
@@ -14,8 +11,8 @@
 
 .typing-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: currentColor;
   margin: 0 1px;
@@ -35,7 +32,7 @@
 /* Voice Message Animations */
 @keyframes recordPulse {
   0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
+  50% { transform: scale(1.1); opacity: 0.8; }
   100% { transform: scale(1); opacity: 1; }
 }
 
@@ -45,100 +42,20 @@
 
 /* Progress Bar Animation */
 .progress-bar {
-  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: width 0.3s ease;
 }
 
 /* Voice recorder container */
 .voice-recorder {
-  border-radius: var(--radius-md);
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
 }
 
-/* Apple-style animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.voice-recorder.recording {
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.5);
 }
 
-.animate-slideIn {
-  animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-/* Message list animations */
-.message-enter {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.message-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Poll animations */
-.poll-option {
-  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.poll-option:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.poll-progress {
-  transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-}
-
-[data-theme="apple-dark"] ::-webkit-scrollbar-thumb,
-[data-theme="apple-midnight"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="apple-dark"] ::-webkit-scrollbar-thumb:hover,
-[data-theme="apple-midnight"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Add to frontend/src/index.css */
+/* Bookmark styles */
 @keyframes highlightBookmark {
   0% { background-color: rgba(var(--p), 0.1); }
   50% { background-color: rgba(var(--p), 0.3); }
@@ -147,4 +64,57 @@
 
 .highlight-message {
   animation: highlightBookmark 2s ease-out;
+}
+
+/* Improved message UI styles */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chat-header-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bookmark-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(var(--p), 0.1);
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin-top: -3px;
+}
+
+.bookmark-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--p));
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-bubble {
+  position: relative;
+  padding-top: 6px;
+}
+
+.chat-timestamp {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.chat-actions {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.chat:hover .chat-actions {
+  opacity: 1;
 }
