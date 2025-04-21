@@ -22,7 +22,7 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
     }
     
     if (!text.trim() && !message.image && !message.document && !message.voiceMessage) {
-      toast.error("Please enter a message");
+      toast.error("Please enter a message or add an attachment");
       return;
     }
     
@@ -30,9 +30,9 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
       receiverId,
       groupId,
       text: text.trim(),
-      image: message.image,
-      document: message.document,
-      voiceMessage: message.voiceMessage,
+      image: message.image ? { data: message.image.data, name: message.image.name } : null, 
+      document: message.document ? { data: message.document.data, name: message.document.name, type: message.document.type, size: message.document.size } : null,
+      voiceMessage: message.voiceMessage ? { data: message.voiceMessage.data, duration: message.voiceMessage.duration } : null,
       scheduledFor: scheduledFor.toISOString()
     };
     
@@ -43,14 +43,13 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-base-100 rounded-xl shadow-xl w-full max-w-md mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-base-200">
-          <h3 className="text-lg font-semibold">Schedule Message</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-base-100 rounded-2xl shadow-xl w-full max-w-lg mx-auto flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-base-300 flex-shrink-0">
+          <h3 className="text-xl font-semibold">Schedule Message</h3>
           <button 
             onClick={onClose} 
-            className="btn btn-ghost btn-circle btn-sm"
+            className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:bg-base-200"
             disabled={isCreating}
             aria-label="Close"
           >
@@ -58,66 +57,63 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
           </button>
         </div>
         
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Message preview */}
-          <div className="bg-base-100 rounded-3xl border border-base-200 p-5 mb-6">
-            <h4 className="text-sm font-medium text-base-content/60 mb-2">Message</h4>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+          <div>
+            <label htmlFor="schedule-message-text" className="block text-sm font-medium text-base-content/80 mb-2">
+              Message Content
+            </label>
             <textarea 
-              className="textarea w-full border-none p-0 resize-none bg-transparent focus:outline-none" 
+              id="schedule-message-text"
+              className="textarea textarea-bordered w-full resize-none bg-base-100 focus:ring-1 focus:ring-primary focus:border-primary" 
               placeholder="Type your message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              rows={3}
+              rows={4}
               disabled={isCreating}
             />
-            
-            {/* Attachments preview */}
-            {(message.image || message.document || message.voiceMessage) && (
-              <div className="mt-3 pt-3 border-t border-base-200">
-                <div className="text-sm font-medium text-base-content/60 mb-2">Attachments</div>
-                <div className="flex flex-wrap gap-2">
-                  {message.image && (
-                    <div className="bg-base-200 rounded-lg p-2 text-xs">
-                      Image attachment
-                    </div>
-                  )}
-                  {message.document && (
-                    <div className="bg-base-200 rounded-lg p-2 text-xs">
-                      {message.document.name || "Document"}
-                    </div>
-                  )}
-                  {message.voiceMessage && (
-                    <div className="bg-base-200 rounded-lg p-2 text-xs">
-                      Voice message
-                    </div>
-                  )}
-                </div>
+          </div>
+          
+          {(message.image || message.document || message.voiceMessage) && (
+            <div className="pt-4 border-t border-base-200">
+              <h4 className="text-sm font-medium text-base-content/80 mb-2">Attachments</h4>
+              <div className="flex flex-wrap gap-2">
+                {message.image && (
+                  <div className="badge badge-outline gap-1 p-3">
+                    <i className="fas fa-image"></i>
+                    Image
+                  </div>
+                )}
+                {message.document && (
+                  <div className="badge badge-outline gap-1 p-3">
+                     <i className="fas fa-file-alt"></i>
+                    {message.document.name || "Document"}
+                  </div>
+                )}
+                {message.voiceMessage && (
+                  <div className="badge badge-outline gap-1 p-3">
+                     <i className="fas fa-microphone"></i>
+                    Voice message
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           
-          {/* Schedule picker */}
           <div>
-            <h4 className="text-sm font-medium mb-2">Schedule for</h4>
-            <DateTimePicker onSelect={setScheduledFor} disabled={isCreating} />
+            <h4 className="text-sm font-medium text-base-content/80 mb-2">Schedule for</h4>
+            <div className="bg-base-200/50 rounded-lg p-4 border border-base-300">
+              <DateTimePicker onSelect={setScheduledFor} disabled={isCreating} />
+            </div>
           </div>
           
-          {/* Submit button */}
-          <div className="mt-6">
+          <div className="pt-4 border-t border-base-300 mt-auto flex-shrink-0">
             <button 
               type="submit"
-              className="btn btn-primary w-full rounded-full"
-              disabled={isCreating || !text.trim()}
+              className={`btn btn-primary w-full ${isCreating ? 'loading' : ''}`}
+              disabled={isCreating || (!text.trim() && !message.image && !message.document && !message.voiceMessage) || !scheduledFor}
             >
-              {isCreating ? (
-                "Scheduling..."
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <Send className="size-4" />
-                  Schedule
-                </div>
-              )}
+              {!isCreating && <Send className="size-4" />}
+              {isCreating ? "Scheduling..." : "Schedule Message"}
             </button>
           </div>
         </form>
