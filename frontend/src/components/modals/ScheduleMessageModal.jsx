@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { X, Clock, Send } from 'lucide-react';
 import DateTimePicker from '../DateTimePicker';
 import { useScheduledMessageStore } from '../../store/useScheduledMessageStore';
+import toast from 'react-hot-toast';
 
 const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = null, message = {} }) => {
   const [scheduledFor, setScheduledFor] = useState(null);
@@ -42,80 +43,80 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-4 border-b border-base-300 flex justify-between items-center">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Clock className="size-5" />
-            Schedule Message
-          </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-base-100 rounded-xl shadow-xl w-full max-w-md mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-base-200">
+          <h3 className="text-lg font-semibold">Schedule Message</h3>
           <button 
             onClick={onClose} 
             className="btn btn-ghost btn-circle btn-sm"
             disabled={isCreating}
+            aria-label="Close"
           >
             <X className="size-5" />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Message</span>
-            </label>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6">
+          {/* Message preview */}
+          <div className="bg-base-100 rounded-3xl border border-base-200 p-5 mb-6">
+            <h4 className="text-sm font-medium text-base-content/60 mb-2">Message</h4>
             <textarea 
-              className="textarea textarea-bordered w-full" 
-              placeholder="Enter your message"
+              className="textarea w-full border-none p-0 resize-none bg-transparent focus:outline-none" 
+              placeholder="Type your message..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              rows={4}
+              rows={3}
               disabled={isCreating}
             />
+            
+            {/* Attachments preview */}
+            {(message.image || message.document || message.voiceMessage) && (
+              <div className="mt-3 pt-3 border-t border-base-200">
+                <div className="text-sm font-medium text-base-content/60 mb-2">Attachments</div>
+                <div className="flex flex-wrap gap-2">
+                  {message.image && (
+                    <div className="bg-base-200 rounded-lg p-2 text-xs">
+                      Image attachment
+                    </div>
+                  )}
+                  {message.document && (
+                    <div className="bg-base-200 rounded-lg p-2 text-xs">
+                      {message.document.name || "Document"}
+                    </div>
+                  )}
+                  {message.voiceMessage && (
+                    <div className="bg-base-200 rounded-lg p-2 text-xs">
+                      Voice message
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Schedule for</span>
-            </label>
-            <DateTimePicker 
-              onSelect={setScheduledFor} 
-              disabled={isCreating}
-            />
+          {/* Schedule picker */}
+          <div>
+            <h4 className="text-sm font-medium mb-2">Schedule for</h4>
+            <DateTimePicker onSelect={setScheduledFor} disabled={isCreating} />
           </div>
           
-          {/* Preview of attachments if any */}
-          {(message.image || message.document || message.voiceMessage) && (
-            <div className="bg-base-200 p-3 rounded-lg">
-              <h4 className="text-sm font-medium mb-2">Attachments</h4>
-              {message.image && <div className="text-sm">Image attachment</div>}
-              {message.document && (
-                <div className="text-sm">{message.document.name || "Document attachment"}</div>
-              )}
-              {message.voiceMessage && <div className="text-sm">Voice message</div>}
-            </div>
-          )}
-          
-          <div className="flex justify-end gap-2 pt-4">
-            <button 
-              type="button"
-              onClick={onClose}
-              className="btn btn-ghost"
-              disabled={isCreating}
-            >
-              Cancel
-            </button>
+          {/* Submit button */}
+          <div className="mt-6">
             <button 
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary w-full rounded-full"
               disabled={isCreating || !text.trim()}
             >
               {isCreating ? (
-                <>Loading...</>
+                "Scheduling..."
               ) : (
-                <>
+                <div className="flex items-center justify-center gap-2">
                   <Send className="size-4" />
                   Schedule
-                </>
+                </div>
               )}
             </button>
           </div>

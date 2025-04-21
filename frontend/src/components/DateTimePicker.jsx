@@ -42,6 +42,17 @@ const DateTimePicker = ({ onSelect, minDate = new Date() }) => {
     date.setMinutes(date.getMinutes() + minutes);
     setSelectedDate(date);
     onSelect(date);
+    setShowPicker(false); // Close picker after selection
+  };
+  
+  // Set tomorrow morning
+  const setTomorrowMorning = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    setSelectedDate(tomorrow);
+    onSelect(tomorrow);
+    setShowPicker(false); // Close picker after selection
   };
   
   useEffect(() => {
@@ -53,81 +64,80 @@ const DateTimePicker = ({ onSelect, minDate = new Date() }) => {
   }, [onSelect]);
   
   return (
-    <div className="relative">
+    <div className="relative w-full mt-3 mb-5">
+      {/* Date display button */}
       <button 
         type="button"
         onClick={() => setShowPicker(!showPicker)}
-        className="btn btn-sm btn-outline flex items-center gap-2"
+        className="flex items-center gap-2.5 px-4 py-3 w-full bg-base-100 
+                  border border-base-300 rounded-full hover:bg-base-200 
+                  transition-colors text-left"
       >
-        <Calendar className="size-4" />
-        <span>{formatDate(selectedDate)}</span>
+        <Calendar className="size-5 text-primary" />
+        <span className="font-medium">{formatDate(selectedDate)}</span>
       </button>
       
+      {/* Date/time picker popover */}
       {showPicker && (
-        <div className="absolute left-0 top-full mt-2 p-4 bg-base-200 rounded-lg shadow-lg z-50 w-[300px]">
-          <div className="space-y-4">
-            <h3 className="font-medium flex items-center gap-2">
-              <Clock className="size-4" />
+        <div className="absolute left-0 top-full mt-3 p-6 bg-base-100 rounded-2xl 
+                       shadow-lg z-50 w-full border border-base-200">
+          <div className="space-y-6">
+            {/* Header */}
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Clock className="size-5 text-primary" />
               Schedule for
             </h3>
             
             {/* Quick options */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <button 
                 type="button"
                 onClick={() => setQuickOption(30)}
-                className="btn btn-sm btn-outline"
+                className="btn btn-outline border-base-300 rounded-full py-3 font-medium"
               >
                 In 30 minutes
               </button>
               <button 
                 type="button"
                 onClick={() => setQuickOption(60)}
-                className="btn btn-sm btn-outline"
+                className="btn btn-outline border-base-300 rounded-full py-3 font-medium"
               >
                 In 1 hour
               </button>
               <button 
                 type="button"
                 onClick={() => setQuickOption(180)}
-                className="btn btn-sm btn-outline"
+                className="btn btn-outline border-base-300 rounded-full py-3 font-medium"
               >
                 In 3 hours
               </button>
               <button 
                 type="button"
-                onClick={() => {
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  tomorrow.setHours(9, 0, 0, 0);
-                  setSelectedDate(tomorrow);
-                  onSelect(tomorrow);
-                }}
-                className="btn btn-sm btn-outline"
+                onClick={setTomorrowMorning}
+                className="btn btn-outline border-base-300 rounded-full py-3 font-medium"
               >
                 Tomorrow 9 AM
               </button>
             </div>
             
-            {/* Date time picker */}
-            <div>
-              <label className="label">
-                <span className="label-text">Custom time</span>
-              </label>
+            {/* Custom time picker */}
+            <div className="space-y-2.5">
+              <label className="font-medium block">Custom time</label>
               <input 
                 type="datetime-local" 
-                className="input input-bordered w-full" 
+                className="input input-bordered w-full rounded-xl px-4 py-3 h-auto" 
                 value={formatDateForInput(selectedDate)}
                 min={formatDateForInput(minDate)}
                 onChange={handleDateChange}
               />
             </div>
             
+            {/* Action button */}
             <div className="flex justify-end">
               <button 
                 type="button"
                 onClick={() => setShowPicker(false)}
-                className="btn btn-sm"
+                className="btn btn-primary rounded-full px-6"
               >
                 Done
               </button>
