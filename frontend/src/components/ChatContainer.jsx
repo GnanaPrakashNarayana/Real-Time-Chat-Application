@@ -141,6 +141,24 @@ const ChatContainer = () => {
 
   const isTyping = typingUsers[selectedUser._id];
 
+  useEffect(() => {
+    // Only try to get smart replies if there are messages and the last one is from the other person
+    if (messages && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      // Check if last message is from the other person and has text
+      if (
+        lastMessage && 
+        lastMessage.text && 
+        typeof lastMessage.senderId === 'object' 
+          ? lastMessage.senderId._id !== authUser._id 
+          : lastMessage.senderId !== authUser._id
+      ) {
+        // Get smart replies for the last message
+        getSmartReplies(lastMessage.text);
+      }
+    }
+  }, [messages, authUser._id, getSmartReplies]);
+
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <ChatHeader onShowSummary={handleShowSummary} />

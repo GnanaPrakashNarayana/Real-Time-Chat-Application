@@ -67,6 +67,22 @@ const GroupChatContainer = () => {
     );
   }
 
+  useEffect(() => {
+    // Only try to get smart replies if there are messages and the last one is from someone else
+    if (groupMessages && groupMessages.length > 0) {
+      const lastMessage = groupMessages[groupMessages.length - 1];
+      // Check if last message is from someone else and has text
+      if (
+        lastMessage && 
+        lastMessage.text && 
+        lastMessage.senderId._id !== authUser._id
+      ) {
+        // Get smart replies for the last message
+        getSmartReplies(lastMessage.text);
+      }
+    }
+  }, [groupMessages, authUser._id, getSmartReplies]);
+
   return (
     <div className="flex-1 flex flex-col overflow-auto">
       <GroupHeader onShowSummary={() => setShowSummaryModal(true)} />

@@ -1,19 +1,12 @@
-// Updated frontend/src/components/SmartReplySuggestions.jsx
+// frontend/src/components/SmartReplySuggestions.jsx
 import { Sparkles } from "lucide-react";
-import { memo, useCallback } from "react";
+import { memo } from "react";
 
-const SmartReplySuggestions = memo(({ suggestions = [], onSendReply, isLoading = false }) => {
+const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = false }) => {
   // If there are no suggestions and not loading, don't render anything
   if ((!suggestions || suggestions.length === 0) && !isLoading) {
     return null;
   }
-  
-  // Memoize click handler for performance
-  const handleClick = useCallback((suggestion) => {
-    if (onSendReply) {
-      onSendReply(suggestion);
-    }
-  }, [onSendReply]);
   
   return (
     <div className="px-4 py-3 border-t border-base-300 animate-fadeIn">
@@ -34,7 +27,7 @@ const SmartReplySuggestions = memo(({ suggestions = [], onSendReply, isLoading =
             <button
               key={index}
               className="px-3 py-1.5 text-sm bg-base-200 hover:bg-primary/10 hover:text-primary rounded-full transition-colors"
-              onClick={() => handleClick(suggestion)}
+              onClick={() => onSendReply(suggestion)}
             >
               {suggestion}
             </button>
@@ -43,8 +36,6 @@ const SmartReplySuggestions = memo(({ suggestions = [], onSendReply, isLoading =
       </div>
     </div>
   );
-});
+};
 
-SmartReplySuggestions.displayName = 'SmartReplySuggestions';
-
-export default SmartReplySuggestions;
+export default memo(SmartReplySuggestions);
