@@ -26,7 +26,8 @@ const GroupChatContainer = () => {
     smartReplies,
     isLoadingSmartReplies,
     sendGroupMessage,
-    clearSmartReplies
+    clearSmartReplies,
+    getSmartReplies
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
