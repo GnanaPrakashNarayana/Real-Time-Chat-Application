@@ -137,14 +137,21 @@ const ChatContainer = () => {
           <div
             id={`message-${message._id}`}
             key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+            className={`chat ${
+              // Handle cases where senderId might be an object or string
+              (typeof message.senderId === 'object' ? message.senderId._id : message.senderId) === authUser._id ||
+              // Also mark messages as outgoing if they were scheduled by the current user
+              message._schedulerSent === true
+                ? "chat-end" 
+                : "chat-start"
+            }`}
             ref={index === messages.length - 1 ? messageEndRef : null}
           >
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
                 <img
                   src={
-                    message.senderId === authUser._id
+                    (typeof message.senderId === 'object' ? message.senderId._id : message.senderId) === authUser._id
                       ? authUser.profilePic || "/avatar.png"
                       : selectedUser.profilePic || "/avatar.png"
                   }
@@ -160,7 +167,7 @@ const ChatContainer = () => {
                 </time>
                 
                 {/* Show read status for sent messages */}
-                {message.senderId === authUser._id && (
+                {(typeof message.senderId === 'object' ? message.senderId._id : message.senderId) === authUser._id && (
                   <span>
                     {message.read ? (
                       <CheckCheck size={14} className="text-blue-500" />

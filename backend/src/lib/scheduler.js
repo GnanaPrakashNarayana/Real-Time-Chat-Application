@@ -273,7 +273,10 @@ const sendDirectMessage = async (scheduledMessage) => {
       _id: sender._id,
       fullName: sender.fullName,
       profilePic: sender.profilePic
-    }
+    },
+    // Flag to identify scheduled messages
+    _isScheduled: true,
+    _schedulerSent: true
   };
   
   // Notify recipient via socket
@@ -388,7 +391,10 @@ const sendGroupMessage = async (scheduledMessage) => {
       _id: sender._id,
       fullName: sender.fullName,
       profilePic: sender.profilePic
-    }
+    },
+    // Flag to identify scheduled messages
+    _isScheduled: true,
+    _schedulerSent: true
   };
   
   // Notify group members

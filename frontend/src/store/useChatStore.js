@@ -341,6 +341,13 @@ export const useChatStore = create((set, get) => ({
           
           const currentUserId = useAuthStore.getState().authUser._id;
           
+          // CRITICAL: Ensure sender ID is explicitly the current user (authUser)
+          // This forces the UI to render it as an outgoing message
+          if (messageSenderId !== currentUserId) {
+            console.log("⚠️ Correcting senderId to match current user");
+            message.senderId = currentUserId;
+          }
+          
           // Only add the message if:
           // 1. The current user is the sender
           // 2. The selected user is the receiver
