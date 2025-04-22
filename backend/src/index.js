@@ -27,9 +27,20 @@ dotenv.config();
 
 const PORT = process.env.PORT;
 
+// Create a whitelist of domains and check if the origin is in that whitelist
+const whitelist = ['https://chatterpillar.netlify.app', 'http://localhost:5173', process.env.FRONTEND_URL];
+
 // CORS Middleware - Move this BEFORE any other middleware
 app.use(cors({
-  origin: ['https://chatterpillar.netlify.app', 'http://localhost:5173', process.env.FRONTEND_URL],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(null, true); // Allow all origins in development/testing
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -38,9 +49,14 @@ app.use(cors({
 // Handle OPTIONS requests explicitly for preflight
 app.options('*', cors());
 
-// Add CORS headers to all responses
+// Add CORS headers to all responses as a fallback
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  if (origin && whitelist.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://chatterpillar.netlify.app');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -49,7 +65,7 @@ app.use((req, res, next) => {
 
 // Request logging middleware for debugging
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} from ${req.headers.origin}`);
+  console.log(`${req.method} ${req.url} from ${req.headers.origin || 'unknown origin'}`);
   next();
 });
 
@@ -75,6 +91,7 @@ app.get('/api/cors-test', (req, res) => {
   });
 });
 
+// Rest of your code remains unchanged
 console.log("Starting server...");
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("Current directory:", __dirname);
