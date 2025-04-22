@@ -72,7 +72,7 @@ export const getConversationSummary = async (req, res) => {
       .join(" ")
       .slice(-MAX_CHARS); // keep tail
 
-    /* ---------- Hugging Face ---------- */
+    /* ---------- Hugging Face ---------- */
     const hfSummary = await summariseWithHF(transcript);
     if (hfSummary) {
       console.log("🪵 HF‑Summary used"); // visible in Render logs
@@ -80,8 +80,19 @@ export const getConversationSummary = async (req, res) => {
     }
 
     /* ---------- Fallback ---------- */
-    const fallback = transcript.split(/(?<=[.?!])\s+/).slice(-4).join(" ");
-    return res.status(200).json({ summary: fallback });
+    // This fallback should never be reached, since summariseWithHF now always returns a summary
+    // But just in case, we'll provide something better than just the last 4 sentences
+    const topicKeywords = ['work', 'meet', 'schedule', 'project', 'deadline', 'family', 'weekend', 'plan'];
+    const topics = topicKeywords.filter(keyword => transcript.toLowerCase().includes(keyword));
+    
+    let fallbackSummary = "This conversation";
+    if (topics.length > 0) {
+      fallbackSummary += ` discussed topics like ${topics.join(', ')}`;
+    }
+    
+    fallbackSummary += ` between you and the other person contained ${msgs.length} messages.`;
+    
+    return res.status(200).json({ summary: fallbackSummary });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });

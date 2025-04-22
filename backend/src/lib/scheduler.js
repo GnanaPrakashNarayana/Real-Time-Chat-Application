@@ -18,7 +18,7 @@ const initScheduler = () => {
       const messagesToSend = await ScheduledMessage.find({
         scheduledFor: { $lte: now },
         status: "scheduled"
-      }).populate("senderId", "fullName profilePic");
+      });
       
       if (messagesToSend.length > 0) {
         console.log(`Found ${messagesToSend.length} scheduled messages to send`);
@@ -40,7 +40,7 @@ const sendScheduledMessage = async (scheduledMessage) => {
     if (scheduledMessage.receiverId) {
       // Create a new direct message
       const newMessage = new Message({
-        senderId: scheduledMessage.senderId._id,
+        senderId: scheduledMessage.senderId,
         receiverId: scheduledMessage.receiverId,
         text: scheduledMessage.text,
         image: scheduledMessage.image,
@@ -58,22 +58,23 @@ const sendScheduledMessage = async (scheduledMessage) => {
       // Notify recipient via socket
       const receiverSocketId = getReceiverSocketId(scheduledMessage.receiverId);
       if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", {
-          ...newMessage.toObject(),
-          senderId: scheduledMessage.senderId
-        });
+        // Populate sender data for the socket event
+        const populatedMessage = await Message.findById(newMessage._id)
+          .populate("senderId", "fullName profilePic");
+          
+        io.to(receiverSocketId).emit("newMessage", populatedMessage);
       }
       
     } else if (scheduledMessage.groupId) {
       // Create a new group message
       const newGroupMessage = new GroupMessage({
-        senderId: scheduledMessage.senderId._id,
+        senderId: scheduledMessage.senderId,
         groupId: scheduledMessage.groupId,
         text: scheduledMessage.text,
         image: scheduledMessage.image,
         document: scheduledMessage.document,
         voiceMessage: scheduledMessage.voiceMessage,
-        readBy: [scheduledMessage.senderId._id], // Mark as read by sender
+        readBy: [scheduledMessage.senderId], // Mark as read by sender
       });
       
       await newGroupMessage.save();
@@ -87,15 +88,16 @@ const sendScheduledMessage = async (scheduledMessage) => {
       const group = await Group.findById(scheduledMessage.groupId);
       
       if (group) {
+        // Populate the message for the socket event
+        const populatedMessage = await GroupMessage.findById(newGroupMessage._id)
+          .populate("senderId", "fullName profilePic");
+          
         group.members.forEach((memberId) => {
-          if (memberId.toString() !== scheduledMessage.senderId._id.toString()) {
+          if (memberId.toString() !== scheduledMessage.senderId.toString()) {
             const socketId = getReceiverSocketId(memberId);
             if (socketId) {
               io.to(socketId).emit("newGroupMessage", {
-                message: {
-                  ...newGroupMessage.toObject(),
-                  senderId: scheduledMessage.senderId
-                },
+                message: populatedMessage,
                 group: {
                   _id: group._id,
                   name: group.name,

@@ -1,4 +1,3 @@
-// Frontend/src/components/polls/PollDisplay.jsx
 import { useState, useEffect } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useGroupStore } from "../../store/useGroupStore";
@@ -86,8 +85,8 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
 
   // Calculate percentage for an option
   const getPercentage = (option) => {
-    if (!option || !Array.isArray(option.votes)) return 0;
-    return totalVotes === 0 ? 0 : Math.round((option.votes.length / totalVotes) * 100);
+    if (!option || !Array.isArray(option.votes) || totalVotes === 0) return 0;
+    return Math.round((option.votes.length / totalVotes) * 100);
   };
 
   // Handle vote submission
@@ -96,6 +95,40 @@ const PollDisplay = ({ poll: initialPoll, messageId }) => {
     setIsSubmitting(true);
     
     try {
+      // Immediately update local state to reflect the vote
+      const updatedOptions = localPoll.options.map(option => {
+        // Clone the option to avoid mutating state directly
+        const newOption = {...option, votes: [...(Array.isArray(option.votes) ? option.votes : [])]};
+        
+        // If this is the selected option, add the user's vote if not already present
+        if (option._id === selectedOption) {
+          // Check if user already voted for this option
+          const alreadyVoted = newOption.votes.some(vote => {
+            if (typeof vote === 'string') return vote === authUser._id;
+            return vote?._id === authUser._id;
+          });
+          
+          if (!alreadyVoted) {
+            // Add user to votes (use full user object if we have it)
+            newOption.votes.push(authUser);
+          }
+        } else {
+          // Remove user's vote from other options
+          newOption.votes = newOption.votes.filter(vote => {
+            if (typeof vote === 'string') return vote !== authUser._id;
+            return vote?._id !== authUser._id;
+          });
+        }
+        
+        return newOption;
+      });
+      
+      // Update local poll state immediately
+      setLocalPoll(prevPoll => ({
+        ...prevPoll,
+        options: updatedOptions
+      }));
+      
       // Then send to server
       const success = await votePoll({ 
         pollId: localPoll._id, 
