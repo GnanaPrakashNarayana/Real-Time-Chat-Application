@@ -15,8 +15,7 @@ import groupRoutes from "./routes/group.route.js";
 import scheduledMessageRoutes from "./routes/scheduledMessage.route.js";
 import bookmarkRoutes from "./routes/bookmark.route.js";
 import pollRoutes from "./routes/poll.route.js";
-import helperRoutes from "./routes/helper.route.js";
-import debugRoutes from "./routes/debug.route.js"; // Add this import
+import helperRoutes from "./routes/helper.route.js"; // Add this import
 import { app, server } from "./lib/socket.js";
 import initScheduler from "./lib/scheduler.js";
 
@@ -81,8 +80,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/scheduled-messages", scheduledMessageRoutes);
 app.use("/api/bookmarks", bookmarkRoutes);
 app.use("/api/polls", pollRoutes);
-app.use("/api/helper", helperRoutes);
-app.use("/api/debug", debugRoutes); // Add debug routes
+app.use("/api/helper", helperRoutes); // Add debug routes
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
