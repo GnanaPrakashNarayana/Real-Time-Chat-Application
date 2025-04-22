@@ -60,9 +60,14 @@ const ChatContainer = () => {
 
   // Handle sending a smart reply
   const handleSendSmartReply = (text) => {
-    if (text) {
+    if (!text || typeof text !== 'string') return;
+    
+    try {
       sendMessage({ text });
       clearSmartReplies();
+    } catch (error) {
+      console.error("Error sending smart reply:", error);
+      toast.error("Failed to send message");
     }
   };
 
@@ -144,21 +149,28 @@ const ChatContainer = () => {
 
   useEffect(() => {
     // Only try to get smart replies if there are messages and the last one is from the other person
-    if (messages && messages.length > 0) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) return;
+    
+    try {
       const lastMessage = messages[messages.length - 1];
       // Check if last message is from the other person and has text
       if (
         lastMessage && 
         lastMessage.text && 
-        typeof lastMessage.senderId === 'object' 
-          ? lastMessage.senderId._id !== authUser._id 
-          : lastMessage.senderId !== authUser._id
+        typeof lastMessage.text === 'string' &&
+        (typeof lastMessage.senderId === 'object' 
+          ? lastMessage.senderId?._id !== authUser?._id 
+          : lastMessage.senderId !== authUser?._id)
       ) {
         // Get smart replies for the last message
-        getSmartReplies(lastMessage.text);
+        if (typeof getSmartReplies === 'function') {
+          getSmartReplies(lastMessage.text);
+        }
       }
+    } catch (error) {
+      console.error("Error handling smart replies:", error);
     }
-  }, [messages, authUser._id, getSmartReplies]);
+  }, [messages, authUser?._id, getSmartReplies]);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -295,7 +307,7 @@ const ChatContainer = () => {
       </div>
 
       {/* Add Smart Reply suggestions */}
-      {smartReplies && smartReplies.length > 0 && (
+      {Array.isArray(smartReplies) && smartReplies.length > 0 && (
         <SmartReplySuggestions 
           suggestions={smartReplies} 
           onSendReply={handleSendSmartReply}

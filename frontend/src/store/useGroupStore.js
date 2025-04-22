@@ -379,7 +379,15 @@ export const useGroupStore = create((set, get) => ({
     try {
       // Get recent messages for context
       const { groupMessages } = get();
-      const recentMessages = groupMessages.slice(-5).map(msg => msg.text).filter(Boolean);
+      
+      if (!Array.isArray(groupMessages)) {
+        set({ smartReplies: [], isLoadingSmartReplies: false });
+        return;
+      }
+      
+      const recentMessages = groupMessages.slice(-5)
+        .map(msg => msg && msg.text && typeof msg.text === 'string' ? msg.text : '')
+        .filter(Boolean);
       
       // Decide whether to use context-enhanced endpoint
       let endpoint = "/smart-replies/generate";
@@ -399,10 +407,12 @@ export const useGroupStore = create((set, get) => ({
       if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
         set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
       } else {
+        // Fallback to empty array if no valid replies
         set({ smartReplies: [], isLoadingSmartReplies: false });
       }
     } catch (error) {
       console.error("Error fetching smart replies:", error);
+      // Always ensure we reset loading state and provide a default value
       set({ smartReplies: [], isLoadingSmartReplies: false });
     }
   },

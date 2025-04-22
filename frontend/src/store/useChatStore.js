@@ -422,10 +422,6 @@ export const useChatStore = create((set, get) => ({
   setSelectedUser: (selectedUser) => set({ selectedUser }),
   
   // Smart Reply functions
-  // In frontend/src/store/useChatStore.js
-  // Update the smart reply portion
-
-  // Smart Reply functions
   getSmartReplies: async (message) => {
     if (!message || typeof message !== 'string' || message.trim().length < 2) return;
     
@@ -433,7 +429,15 @@ export const useChatStore = create((set, get) => ({
     try {
       // Get recent messages for context
       const { messages } = get();
-      const recentMessages = messages.slice(-5).map(msg => msg.text).filter(Boolean);
+      
+      if (!Array.isArray(messages)) {
+        set({ smartReplies: [], isLoadingSmartReplies: false });
+        return;
+      }
+      
+      const recentMessages = messages.slice(-5)
+        .map(msg => msg && msg.text && typeof msg.text === 'string' ? msg.text : '')
+        .filter(Boolean);
       
       // Decide whether to use context-enhanced endpoint
       let endpoint = "/smart-replies/generate";
@@ -453,10 +457,12 @@ export const useChatStore = create((set, get) => ({
       if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
         set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
       } else {
+        // Fallback to empty array if no valid replies
         set({ smartReplies: [], isLoadingSmartReplies: false });
       }
     } catch (error) {
       console.error("Error fetching smart replies:", error);
+      // Always ensure we reset loading state and provide a default value
       set({ smartReplies: [], isLoadingSmartReplies: false });
     }
   },

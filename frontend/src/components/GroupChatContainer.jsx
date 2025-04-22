@@ -13,6 +13,7 @@ import BookmarkButton from "./BookmarkButton";
 import PollDisplay from "./polls/PollDisplay";
 import ConversationSummaryModal from "./modals/ConversationSummaryModal";
 import SmartReplySuggestions from "./SmartReplySuggestions";
+import { toast } from "react-hot-toast";
 
 const GroupChatContainer = () => {
   const {
@@ -52,9 +53,14 @@ const GroupChatContainer = () => {
 
   // Handle sending a smart reply
   const handleSendSmartReply = (text) => {
-    if (text) {
+    if (!text || typeof text !== 'string') return;
+    
+    try {
       sendGroupMessage({ text });
       clearSmartReplies();
+    } catch (error) {
+      console.error("Error sending smart reply:", error);
+      toast.error("Failed to send message");
     }
   };
 
@@ -70,19 +76,28 @@ const GroupChatContainer = () => {
 
   useEffect(() => {
     // Only try to get smart replies if there are messages and the last one is from someone else
-    if (groupMessages && groupMessages.length > 0) {
+    if (!groupMessages || !Array.isArray(groupMessages) || groupMessages.length === 0) return;
+    
+    try {
       const lastMessage = groupMessages[groupMessages.length - 1];
       // Check if last message is from someone else and has text
       if (
         lastMessage && 
         lastMessage.text && 
-        lastMessage.senderId._id !== authUser._id
+        typeof lastMessage.text === 'string' &&
+        lastMessage.senderId && 
+        typeof lastMessage.senderId === 'object' &&
+        lastMessage.senderId._id !== authUser?._id
       ) {
         // Get smart replies for the last message
-        getSmartReplies(lastMessage.text);
+        if (typeof getSmartReplies === 'function') {
+          getSmartReplies(lastMessage.text);
+        }
       }
+    } catch (error) {
+      console.error("Error generating smart replies:", error);
     }
-  }, [groupMessages, authUser._id, getSmartReplies]);
+  }, [groupMessages, authUser?._id, getSmartReplies]);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -226,7 +241,7 @@ const GroupChatContainer = () => {
       </div>
 
       {/* Add Smart Reply suggestions */}
-      {smartReplies && smartReplies.length > 0 && (
+      {Array.isArray(smartReplies) && smartReplies.length > 0 && (
         <SmartReplySuggestions 
           suggestions={smartReplies} 
           onSendReply={handleSendSmartReply}

@@ -3,10 +3,20 @@ import { Sparkles } from "lucide-react";
 import { memo } from "react";
 
 const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = false }) => {
+  // Ensure suggestions is an array
+  const safeSuggestions = Array.isArray(suggestions) ? suggestions : [];
+  
   // If there are no suggestions and not loading, don't render anything
-  if ((!suggestions || suggestions.length === 0) && !isLoading) {
+  if (safeSuggestions.length === 0 && !isLoading) {
     return null;
   }
+  
+  // Safe function to handle click
+  const handleSendReply = (suggestion) => {
+    if (typeof onSendReply === 'function' && typeof suggestion === 'string') {
+      onSendReply(suggestion);
+    }
+  };
   
   return (
     <div className="px-4 py-3 border-t border-base-300 animate-fadeIn">
@@ -23,13 +33,13 @@ const SmartReplySuggestions = ({ suggestions = [], onSendReply, isLoading = fals
           ))
         ) : (
           // Suggestions - limit to 5 for better mobile display
-          suggestions.slice(0, 5).map((suggestion, index) => (
+          safeSuggestions.slice(0, 5).map((suggestion, index) => (
             <button
               key={index}
               className="px-3 py-1.5 text-sm bg-base-200 hover:bg-primary/10 hover:text-primary rounded-full transition-colors"
-              onClick={() => onSendReply(suggestion)}
+              onClick={() => handleSendReply(suggestion)}
             >
-              {suggestion}
+              {typeof suggestion === 'string' ? suggestion : ''}
             </button>
           ))
         )}

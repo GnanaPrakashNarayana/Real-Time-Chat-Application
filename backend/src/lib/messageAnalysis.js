@@ -69,11 +69,16 @@ export const INTENT = {
   // Core intent detection with confidence scores
   export const detectIntent = (message) => {
     if (!message || typeof message !== 'string') {
-        return [{ type: INTENT.STATEMENT, confidence: 0.5 }];
+        return {
+          intents: [{ type: INTENT.STATEMENT, confidence: 0.5 }],
+          context: {},
+          topIntent: INTENT.STATEMENT
+        };
     }
     
     const text = message.toLowerCase().trim();
     const results = [];
+    const context = extractContext(text);
     
     // Key patterns for each intent type
     const patterns = {
@@ -245,13 +250,14 @@ export const INTENT = {
     // Sort by confidence score, highest first
     results.sort((a, b) => b.confidence - a.confidence);
     
-    // Extract context for better reply generation
-    const context = extractContext(text);
+    // Determine the top intents with the highest confidence
+    const sortedIntents = results.sort((a, b) => b.confidence - a.confidence);
+    const topIntents = sortedIntents.slice(0, 3);
     
     return {
-        intents: results,
+        intents: topIntents,
         context: context,
-        topIntent: results[0]
+        topIntent: topIntents.length > 0 ? topIntents[0].type : INTENT.STATEMENT
     };
   };
   
