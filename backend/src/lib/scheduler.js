@@ -267,6 +267,16 @@ const sendDirectMessage = async (scheduledMessage) => {
   } else {
     console.log(`📝 Receiver not online, message will be delivered on next connection`);
   }
+  
+  // ↩ NEW: Also notify the **sender** so their UI updates without a manual refresh
+  const senderSocketId = getReceiverSocketId(scheduledMessage.senderId);
+  if (senderSocketId) {
+    try {
+      io.to(senderSocketId).emit("newMessage", populatedMessage);
+    } catch (socketError) {
+      console.error("⚠️ Socket emission error to sender:", socketError);
+    }
+  }
 };
 
 const sendGroupMessage = async (scheduledMessage) => {
