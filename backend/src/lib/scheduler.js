@@ -295,10 +295,23 @@ const sendDirectMessage = async (scheduledMessage) => {
   const senderSocketId = getReceiverSocketId(scheduledMessage.senderId);
   if (senderSocketId) {
     try {
+      console.log(`📡 Emitting socket event to sender: ${scheduledMessage.senderId} (Socket ID: ${senderSocketId})`);
+      
+      // Send the same format of message to both sender and receiver
       io.to(senderSocketId).emit("newMessage", populatedMessage);
+      
+      // Also emit a special scheduled message event that the frontend can listen for
+      io.to(senderSocketId).emit("scheduledMessageSent", {
+        message: populatedMessage,
+        originalScheduledMessageId: scheduledMessage._id
+      });
+      
+      console.log(`📡 Socket events sent to sender successfully`);
     } catch (socketError) {
       console.error("⚠️ Socket emission error to sender:", socketError);
     }
+  } else {
+    console.log(`📝 Sender not online, message will be delivered on next connection`);
   }
 };
 

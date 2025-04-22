@@ -181,6 +181,8 @@ export const useChatStore = create((set, get) => ({
     try {
       socket.on("newMessage", (newMessage) => {
         try {
+          console.log("🔔 Received newMessage event:", newMessage);
+          
           if (!newMessage || typeof newMessage !== 'object') {
             console.warn("Received invalid message data:", newMessage);
             return;
@@ -190,9 +192,18 @@ export const useChatStore = create((set, get) => ({
           const messageSenderId = typeof newMessage.senderId === 'object' 
             ? newMessage.senderId._id 
             : newMessage.senderId;
+          
+          console.log("🔍 Comparing message sender:", messageSenderId, "with selected user:", selectedUser._id);
             
           const isMessageFromSelectedUser = messageSenderId === selectedUser._id;
-          if (isMessageFromSelectedUser) {
+          const isMessageFromCurrentUser = messageSenderId === useAuthStore.getState().authUser._id;
+          
+          // Accept messages if they are from the selected user OR from the current user TO the selected user
+          const shouldAddMessage = isMessageFromSelectedUser || 
+            (isMessageFromCurrentUser && newMessage.receiverId === selectedUser._id);
+          
+          if (shouldAddMessage) {
+            console.log("✅ Adding new message to chat");
             set({
               messages: [...get().messages, newMessage],
             });
@@ -208,6 +219,8 @@ export const useChatStore = create((set, get) => ({
             
             // Mark message as read if chat is open
             get().markMessagesAsRead();
+          } else {
+            console.log("❌ Message not added to current chat");
           }
         } catch (messageError) {
           console.error("Error handling newMessage event:", messageError);
@@ -293,6 +306,33 @@ export const useChatStore = create((set, get) => ({
           console.error("Error handling messageReaction event:", reactionError);
         }
       });
+
+      // Listen for scheduled messages specifically
+      socket.on("scheduledMessageSent", (data) => {
+        try {
+          console.log("📅 Received scheduledMessageSent event:", data);
+          
+          if (!data || !data.message) {
+            console.warn("Received invalid scheduled message data");
+            return;
+          }
+          
+          const message = data.message;
+          const receiverId = message.receiverId;
+          
+          // Only add if we're in the correct chat
+          if (selectedUser && selectedUser._id === receiverId) {
+            console.log("✅ Adding scheduled message to current chat");
+            set(state => ({
+              messages: [...state.messages, message]
+            }));
+          } else {
+            console.log("❌ Scheduled message not for current chat");
+          }
+        } catch (error) {
+          console.error("Error handling scheduledMessageSent event:", error);
+        }
+      });
     } catch (subscribeError) {
       console.error("Error setting up message subscription:", subscribeError);
     }
@@ -307,6 +347,7 @@ export const useChatStore = create((set, get) => ({
       socket.off("userTyping");
       socket.off("messagesRead");
       socket.off("messageReaction");
+      socket.off("scheduledMessageSent");
     } catch (error) {
       console.error("Error unsubscribing from messages:", error);
     }
