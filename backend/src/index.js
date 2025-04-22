@@ -28,41 +28,33 @@ dotenv.config();
 
 const PORT = process.env.PORT;
 
-// Create a whitelist of domains and check if the origin is in that whitelist
-const whitelist = ['https://chatterpillar.netlify.app', 'http://localhost:5173', process.env.FRONTEND_URL];
+// → CORS configuration
+const whitelist = [
+  'https://chatterpillar.netlify.app',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+];
 
-// CORS Middleware - Move this BEFORE any other middleware
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin || whitelist.indexOf(origin) !== -1) {
+    // Allow tools like Postman / server‑side requests where origin may be undefined
+    if (!origin || whitelist.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('Blocked origin:', origin);
-      callback(null, true); // Allow all origins in development/testing
+      console.warn('🚫 Blocked CORS origin:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
-// Handle OPTIONS requests explicitly for preflight
-app.options('*', cors());
+// Register CORS with the shared options
+app.use(cors(corsOptions));
 
-// Add CORS headers to all responses as a fallback
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && whitelist.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', 'https://chatterpillar.netlify.app');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
+// Ensure pre‑flight (OPTIONS) requests use the *same* CORS config
+app.options('*', cors(corsOptions));
 
 // Request logging middleware for debugging
 app.use((req, res, next) => {
