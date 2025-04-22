@@ -50,6 +50,30 @@ const initScheduler = () => {
   
   return job; // Return the job for potential management later
 };
+// Add this after initScheduler function in scheduler.js
+// Global function to process a specific message
+global.processSpecificMessage = async (scheduledMessage) => {
+  try {
+    console.log(`🔍 Manually processing specific message: ${scheduledMessage._id}`);
+    
+    // Process the message
+    await sendScheduledMessage(scheduledMessage);
+    
+    return {
+      success: true,
+      messageId: scheduledMessage._id,
+      timestamp: new Date()
+    };
+  } catch (error) {
+    console.error(`⚠️ Error processing specific message:`, error);
+    return {
+      success: false, 
+      error: error.message,
+      messageId: scheduledMessage._id,
+      timestamp: new Date()
+    };
+  }
+};
 
 // Wrapper function to handle scheduler execution with error handling and stats
 const runSchedulerTask = async (isManualRun = false) => {
@@ -112,10 +136,11 @@ const processScheduledMessages = async (isManualRun = false) => {
       
       // Double-check by looking for any messages that might have been missed
       if (isManualRun) {
-        const missedMessages = await ScheduledMessage.find({
+        // FIX: Use countDocuments() instead of count()
+        const missedMessages = await ScheduledMessage.countDocuments({
           scheduledFor: { $lte: new Date(now.getTime() - 60000) }, // Any message scheduled for more than 1 minute ago
           status: "scheduled"
-        }).count();
+        });
         
         if (missedMessages > 0) {
           console.warn(`⚠️ Found ${missedMessages} potentially missed messages from earlier - will retry`);
