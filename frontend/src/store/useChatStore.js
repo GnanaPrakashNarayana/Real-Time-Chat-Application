@@ -193,23 +193,29 @@ export const useChatStore = create((set, get) => ({
             ? newMessage.senderId._id 
             : newMessage.senderId;
           
-          console.log("🔍 Comparing message sender:", messageSenderId, "with selected user:", selectedUser._id);
-            
-          const isMessageFromSelectedUser = messageSenderId === selectedUser._id;
-          const isMessageFromCurrentUser = messageSenderId === useAuthStore.getState().authUser._id;
+          // Extract the receiver ID properly
+          const messageReceiverId = typeof newMessage.receiverId === 'object'
+            ? newMessage.receiverId._id
+            : newMessage.receiverId;
           
-          // Accept messages if they are from the selected user OR from the current user TO the selected user
-          const shouldAddMessage = isMessageFromSelectedUser || 
-            (isMessageFromCurrentUser && newMessage.receiverId === selectedUser._id);
-          
-          if (shouldAddMessage) {
-            console.log("✅ Adding new message to chat");
-            set({
-              messages: [...get().messages, newMessage],
-            });
+          console.log("🔍 Message details - Sender:", messageSenderId, "Receiver:", messageReceiverId);
+          console.log("🔍 Current context - Selected user:", selectedUser._id, "Current user:", useAuthStore.getState().authUser._id);
             
-            // Generate smart replies when receiving a new message
-            if (newMessage.text) {
+          const currentUserId = useAuthStore.getState().authUser._id;
+          
+          // Only process message if:
+          // 1. It's from the selected user to current user (normal incoming)
+          // 2. It's from current user to selected user (normal outgoing) AND not scheduled
+          if ((messageSenderId === selectedUser._id && messageReceiverId === currentUserId) || 
+              (messageSenderId === currentUserId && messageReceiverId === selectedUser._id && !newMessage._isScheduled)) {
+            
+            console.log("✅ Adding message via newMessage event");
+            set(state => ({
+              messages: [...state.messages, newMessage],
+            }));
+            
+            // Generate smart replies when receiving a new message from the other person
+            if (newMessage.text && messageSenderId === selectedUser._id) {
               try {
                 get().getSmartReplies(newMessage.text);
               } catch (smartReplyError) {
@@ -217,10 +223,12 @@ export const useChatStore = create((set, get) => ({
               }
             }
             
-            // Mark message as read if chat is open
-            get().markMessagesAsRead();
+            // Mark message as read if it's from the other person
+            if (messageSenderId === selectedUser._id) {
+              get().markMessagesAsRead();
+            }
           } else {
-            console.log("❌ Message not added to current chat");
+            console.log("❌ Message not handled by newMessage event");
           }
         } catch (messageError) {
           console.error("Error handling newMessage event:", messageError);
@@ -318,11 +326,26 @@ export const useChatStore = create((set, get) => ({
           }
           
           const message = data.message;
-          const receiverId = message.receiverId;
           
-          // Only add if we're in the correct chat
-          if (selectedUser && selectedUser._id === receiverId) {
-            console.log("✅ Adding scheduled message to current chat");
+          // Mark message as scheduled to avoid duplicate processing
+          message._isScheduled = true;
+          
+          // Extract IDs properly
+          const messageSenderId = typeof message.senderId === 'object' 
+            ? message.senderId._id 
+            : message.senderId;
+          
+          const messageReceiverId = typeof message.receiverId === 'object'
+            ? message.receiverId._id
+            : message.receiverId;
+          
+          const currentUserId = useAuthStore.getState().authUser._id;
+          
+          // Only add the message if:
+          // 1. The current user is the sender
+          // 2. The selected user is the receiver
+          if (messageSenderId === currentUserId && selectedUser && messageReceiverId === selectedUser._id) {
+            console.log("✅ Adding scheduled message to chat");
             set(state => ({
               messages: [...state.messages, message]
             }));

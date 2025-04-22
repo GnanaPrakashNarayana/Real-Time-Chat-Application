@@ -297,10 +297,8 @@ const sendDirectMessage = async (scheduledMessage) => {
     try {
       console.log(`📡 Emitting socket event to sender: ${scheduledMessage.senderId} (Socket ID: ${senderSocketId})`);
       
-      // Send the same format of message to both sender and receiver
-      io.to(senderSocketId).emit("newMessage", populatedMessage);
-      
-      // Also emit a special scheduled message event that the frontend can listen for
+      // Only send the scheduledMessageSent event to the sender, not newMessage
+      // This prevents duplicate messages in the UI
       io.to(senderSocketId).emit("scheduledMessageSent", {
         message: populatedMessage,
         originalScheduledMessageId: scheduledMessage._id
