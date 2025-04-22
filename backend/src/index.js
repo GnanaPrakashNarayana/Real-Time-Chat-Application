@@ -55,17 +55,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 // API routes
-
-
-
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
-app.use("/api/polls", pollRoutes);
-app.use("/api/smart-replies", smartReplyRoutes);
-app.use("/api/helper", helperRoutes);
-app.use("/api/bookmarks", bookmarkRoutes);
-app.use("/api/scheduled-messages", scheduledMessageRoutes);// Add this
+app.use("/api/scheduled-messages", scheduledMessageRoutes); // Add this
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
