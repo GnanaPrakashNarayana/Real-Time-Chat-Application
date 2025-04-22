@@ -1,4 +1,4 @@
-// backend/src/routes/debug.route.js (NEW FILE)
+// backend/src/routes/debug.route.js
 import express from "express";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { getSchedulerStatus } from "../lib/scheduler.js";

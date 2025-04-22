@@ -1,4 +1,4 @@
-// frontend/src/pages/ScheduledMessagesPage.jsx (UPDATED VERSION)
+// frontend/src/pages/ScheduledMessagesPage.jsx
 import { useEffect, useState } from 'react';
 import { useScheduledMessageStore } from '../store/useScheduledMessageStore';
 import { Clock, Loader2, Trash, MessageSquare, Users, Calendar, Edit, Send } from 'lucide-react';

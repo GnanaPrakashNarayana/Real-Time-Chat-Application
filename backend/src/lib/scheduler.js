@@ -1,4 +1,4 @@
-// backend/src/lib/scheduler.js (UPDATED VERSION)
+// backend/src/lib/scheduler.js
 import ScheduledMessage from "../models/scheduledMessage.model.js";
 import Message from "../models/message.model.js";
 import GroupMessage from "../models/groupMessage.model.js";

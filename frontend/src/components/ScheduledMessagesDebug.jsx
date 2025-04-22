@@ -1,4 +1,4 @@
-// frontend/src/components/ScheduledMessagesDebug.jsx (NEW FILE)
+// frontend/src/components/ScheduledMessagesDebug.jsx
 import { useState } from 'react';
 import { axiosInstance } from '../lib/axios';
 import { RefreshCw, Play } from 'lucide-react';

@@ -16,9 +16,9 @@ import scheduledMessageRoutes from "./routes/scheduledMessage.route.js";
 import bookmarkRoutes from "./routes/bookmark.route.js";
 import pollRoutes from "./routes/poll.route.js";
 import helperRoutes from "./routes/helper.route.js";
+import debugRoutes from "./routes/debug.route.js"; // Add this import
 import { app, server } from "./lib/socket.js";
 import initScheduler from "./lib/scheduler.js";
-import debugRoutes from "./routes/debug.route.js";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -82,7 +82,7 @@ app.use("/api/scheduled-messages", scheduledMessageRoutes);
 app.use("/api/bookmarks", bookmarkRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/helper", helperRoutes);
-app.use("/api/debug", debugRoutes);
+app.use("/api/debug", debugRoutes); // Add debug routes
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
@@ -151,26 +151,19 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
+// IMPORTANT - KEEP THE ORIGINAL SERVER.LISTEN CALL - DON'T ADD A SECOND ONE
 server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);
-  connectDB();
-
-server.listen(PORT, async () => {
-  console.log("server is running on PORT:" + PORT);
-  await connectDB();
-  
-  // Initialize the scheduler with a small delay to ensure DB connection is ready
-  setTimeout(() => {
+  connectDB().then(() => {
+    // Initialize the scheduler after DB connection is established
+    console.log("Initializing scheduler...");
     try {
-      console.log("Initializing scheduler...");
       const scheduler = initScheduler();
-      console.log("Scheduler initialized successfully:", scheduler ? "✅" : "❌");
+      console.log("Scheduler initialized successfully");
     } catch (error) {
       console.error("Failed to initialize scheduler:", error);
     }
-  }, 2000);
-});
-  
-  // Initialize the scheduler
-  initScheduler();
+  }).catch(err => {
+    console.error("Failed to connect to database:", err);
+  });
 });
