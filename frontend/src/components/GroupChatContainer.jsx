@@ -1,5 +1,5 @@
 // frontend/src/components/GroupChatContainer.jsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGroupStore } from "../store/useGroupStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
@@ -8,8 +8,10 @@ import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, BarChart2 } from "lucide-react";
 import BookmarkButton from "./BookmarkButton";
+import PollDisplay from "./polls/PollDisplay";
+import ConversationSummaryModal from "./modals/ConversationSummaryModal";
 
 const GroupChatContainer = () => {
   const {
@@ -24,6 +26,9 @@ const GroupChatContainer = () => {
   
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
+  
+  // State for conversation summary modal
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   
   // Get typing users
   const typingUserIds = getGroupTypingUsers();
@@ -42,7 +47,7 @@ const GroupChatContainer = () => {
   if (isLoadingMessages) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <GroupHeader />
+        <GroupHeader onShowSummary={() => setShowSummaryModal(true)} />
         <MessageSkeleton />
         <GroupMessageInput />
       </div>
@@ -51,7 +56,7 @@ const GroupChatContainer = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <GroupHeader />
+      <GroupHeader onShowSummary={() => setShowSummaryModal(true)} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {groupMessages.map((message, index) => (
@@ -111,6 +116,16 @@ const GroupChatContainer = () => {
                 </div>
               )}
             
+              {/* Poll display */}
+              {message.poll && (
+                <div className="mb-2 max-w-sm w-full">
+                  <PollDisplay 
+                    poll={message.poll}
+                    messageId={message._id}
+                  />
+                </div>
+              )}
+              
               {/* Image attachment */}
               {message.image && (
                 <img
@@ -145,7 +160,7 @@ const GroupChatContainer = () => {
               {message.text && <p>{message.text}</p>}
               
               {/* Fallback for empty messages */}
-              {!message.text && !message.image && !message.document && !message.voiceMessage && (
+              {!message.text && !message.image && !message.document && !message.voiceMessage && !message.poll && (
                 <p className="text-xs italic opacity-50">Attachment</p>
               )}
             </div>
@@ -181,6 +196,14 @@ const GroupChatContainer = () => {
       </div>
 
       <GroupMessageInput />
+      
+      {/* Conversation Summary Modal */}
+      <ConversationSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        messages={groupMessages}
+        otherUser={{ name: selectedGroup?.name, isGroup: true }}
+      />
     </div>
   );
 };

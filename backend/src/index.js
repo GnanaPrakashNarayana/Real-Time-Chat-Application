@@ -1,4 +1,4 @@
-// backend/src/index.js (update)
+// backend/src/index.js
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
@@ -12,9 +12,12 @@ import { connectDB } from "./lib/db.js";
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import groupRoutes from "./routes/group.route.js";
-import scheduledMessageRoutes from "./routes/scheduledMessage.route.js"; // Add this
+import scheduledMessageRoutes from "./routes/scheduledMessage.route.js";
+import bookmarkRoutes from "./routes/bookmark.route.js";
+import pollRoutes from "./routes/poll.route.js";
+import helperRoutes from "./routes/helper.route.js";
 import { app, server } from "./lib/socket.js";
-import initScheduler from "./lib/scheduler.js"; // Add this
+import initScheduler from "./lib/scheduler.js";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -58,7 +61,10 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
-app.use("/api/scheduled-messages", scheduledMessageRoutes); // Add this
+app.use("/api/scheduled-messages", scheduledMessageRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
+app.use("/api/polls", pollRoutes);
+app.use("/api/helper", helperRoutes);
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {

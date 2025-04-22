@@ -8,6 +8,7 @@ export const useScheduledMessageStore = create((set, get) => ({
   isLoading: false,
   isCreating: false,
   isDeleting: false,
+  isUpdating: false,
   
   // Get all scheduled messages
   getScheduledMessages: async () => {

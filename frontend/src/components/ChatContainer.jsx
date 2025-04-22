@@ -1,6 +1,6 @@
 // frontend/src/components/ChatContainer.jsx
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -11,6 +11,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, FileText, Download, File } from "lucide-react";
 import BookmarkButton from "./BookmarkButton"; 
+import ConversationSummaryModal from "./modals/ConversationSummaryModal";
+import { axiosInstance } from "../lib/axios";
+import toast from "react-hot-toast";
 
 const ChatContainer = () => {
   const {
@@ -26,6 +29,9 @@ const ChatContainer = () => {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [conversationSummary, setConversationSummary] = useState("");
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   useEffect(() => {
     getMessages(selectedUser._id);
@@ -45,6 +51,30 @@ const ChatContainer = () => {
       markMessagesAsRead();
     }
   }, [messages, markMessagesAsRead]);
+
+  // Function to fetch conversation summary
+  const fetchConversationSummary = async () => {
+    if (!selectedUser) return;
+    
+    setIsLoadingSummary(true);
+    
+    try {
+      const res = await axiosInstance.get(`/messages/summary/${selectedUser._id}`);
+      setConversationSummary(res.data.summary || "No conversation summary available");
+    } catch (error) {
+      console.error("Error fetching conversation summary:", error);
+      toast.error("Failed to generate conversation summary");
+      setConversationSummary("Sorry, we couldn't generate a summary at this time.");
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+  
+  // When summary modal is opened, fetch the summary
+  const handleShowSummary = () => {
+    setShowSummaryModal(true);
+    fetchConversationSummary();
+  };
 
   // Helper function to safely render document bubbles
   const renderDocumentBubble = (document) => {
@@ -89,7 +119,7 @@ const ChatContainer = () => {
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <ChatHeader />
+        <ChatHeader onShowSummary={handleShowSummary} />
         <MessageSkeleton />
         <MessageInput />
       </div>
@@ -100,7 +130,7 @@ const ChatContainer = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <ChatHeader />
+      <ChatHeader onShowSummary={handleShowSummary} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
@@ -226,6 +256,16 @@ const ChatContainer = () => {
       </div>
 
       <MessageInput />
+      
+      {/* Conversation Summary Modal */}
+      <ConversationSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        messages={messages}
+        otherUser={selectedUser}
+        isLoading={isLoadingSummary}
+        summary={conversationSummary}
+      />
     </div>
   );
 };

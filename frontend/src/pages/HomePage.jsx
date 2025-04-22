@@ -1,3 +1,4 @@
+// frontend/src/pages/HomePage.jsx
 import { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useGroupStore } from "../store/useGroupStore";
@@ -7,7 +8,8 @@ import GroupSidebar from "../components/GroupSidebar";
 import NoChatSelected from "../components/NoChatSelected";
 import ChatContainer from "../components/ChatContainer";
 import GroupChatContainer from "../components/GroupChatContainer";
-import { MessageSquare, Users } from "lucide-react";
+import { MessageSquare, Users, Bot } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import ErrorBoundary from "../components/ErrorBoundary";
 
@@ -46,6 +48,15 @@ const HomePage = () => {
               <Users className="size-5" />
               <span className="font-medium">Group Chats</span>
             </button>
+            
+            {/* Helper Button */}
+            <Link
+              to="/helper"
+              className="py-4 px-4 flex items-center justify-center gap-2 transition-all text-base-content/70 hover:text-base-content hover:bg-base-200/30"
+            >
+              <Bot className="size-5" />
+              <span className="font-medium">Helper</span>
+            </Link>
           </div>
           
           <div className="flex h-[calc(100%-4rem)] overflow-hidden">

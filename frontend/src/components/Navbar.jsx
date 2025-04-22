@@ -45,6 +45,11 @@ const Navbar = () => {
                   <Clock className="size-5" />
                   <span className="hidden sm:inline">Scheduled</span>
                 </Link>
+                // In Navbar.jsx, add this to your navigation links:
+                <Link to={"/debug"} className={`btn btn-sm btn-ghost`} title="Debug Tools">
+                  <AlertTriangle className="size-4" />
+                  <span className="hidden sm:inline">Debug</span>
+                </Link>
 
                 <button className="flex gap-2 items-center" onClick={logout}>
                   <LogOut className="size-5" />

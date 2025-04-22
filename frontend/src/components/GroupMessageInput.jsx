@@ -1,19 +1,21 @@
 // frontend/src/components/GroupMessageInput.jsx
 import { useRef, useState, useEffect } from "react";
 import { useGroupStore } from "../store/useGroupStore";
-import { Image, Send, X, Paperclip, Mic, Clock } from "lucide-react";
+import { Image, Send, X, Paperclip, Mic, Clock, BarChart2 } from "lucide-react";
 import toast from "react-hot-toast";
 import VoiceRecorder from "./VoiceRecorder";
 import ScheduleMessageModal from "./modals/ScheduleMessageModal";
+import PollCreator from "./polls/PollCreator";
 
 const GroupMessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
-  const [documentName, setDocumentName] = useState(null); // Just store metadata, not file object
-  const [documentData, setDocumentData] = useState(null); // Store base64 data
+  const [documentName, setDocumentName] = useState(null);
+  const [documentData, setDocumentData] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showPollCreator, setShowPollCreator] = useState(false);
   
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -215,6 +217,10 @@ const GroupMessageInput = () => {
         </div>
       )}
       
+      {showPollCreator && (
+        <PollCreator onClose={() => setShowPollCreator(false)} />
+      )}
+      
       {isRecording ? (
         <VoiceRecorder
           onSend={handleSendVoiceMessage}
@@ -273,6 +279,16 @@ const GroupMessageInput = () => {
               title="Record voice message"
             >
               <Mic size={20} />
+            </button>
+            
+            <button
+              type="button"
+              className="hidden sm:flex btn btn-circle"
+              onClick={() => setShowPollCreator(true)}
+              disabled={isSending}
+              title="Create poll"
+            >
+              <BarChart2 size={20} />
             </button>
             
             <button

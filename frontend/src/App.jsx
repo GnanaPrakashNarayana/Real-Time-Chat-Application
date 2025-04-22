@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import ScheduledMessagesPage from "./pages/ScheduledMessagesPage";
+import HelperPage from "./pages/HelperPage";
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
@@ -20,13 +21,9 @@ const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
 
-  console.log({ onlineUsers });
-
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  console.log({ authUser });
 
   if (isCheckingAuth && !authUser)
     return (
@@ -46,6 +43,8 @@ const App = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/scheduled-messages" element={authUser ? <ScheduledMessagesPage /> : <Navigate to="/login" />} />
+        <Route path="/helper" element={authUser ? <HelperPage /> : <Navigate to="/login" />} />
+        <Route path="/debug" element={authUser ? <DebugPage /> : <Navigate to="/login" />} />
       </Routes>
 
       <Toaster />
