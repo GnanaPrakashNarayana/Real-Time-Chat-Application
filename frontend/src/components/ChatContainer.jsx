@@ -30,7 +30,8 @@ const ChatContainer = () => {
     smartReplies,
     isLoadingSmartReplies,
     sendMessage,
-    clearSmartReplies
+    clearSmartReplies,
+    getSmartReplies
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
