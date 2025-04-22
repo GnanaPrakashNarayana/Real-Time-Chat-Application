@@ -17,6 +17,7 @@ import { useEffect } from "react";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
+import DebugPage from "./pages/DebugPage";
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -45,6 +46,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
         <Route path="/scheduled-messages" element={authUser ? <ScheduledMessagesPage /> : <Navigate to="/login" />} />
         <Route path="/helper" element={authUser ? <HelperPage /> : <Navigate to="/login" />} />
+        <Route path="/debug" element={authUser ? <DebugPage /> : <Navigate to="/login" />} />
       </Routes>
 
       <Toaster />
