@@ -243,7 +243,12 @@ const sendDirectMessage = async (scheduledMessage) => {
     messagePayload.document = scheduledMessage.document;
   }
   
-  if (scheduledMessage.voiceMessage && typeof scheduledMessage.voiceMessage === 'object' && scheduledMessage.voiceMessage !== null) {
+  // Only add voiceMessage if it's an object with required properties
+  if (scheduledMessage.voiceMessage && 
+      typeof scheduledMessage.voiceMessage === 'object' && 
+      scheduledMessage.voiceMessage !== null &&
+      scheduledMessage.voiceMessage.url &&
+      scheduledMessage.voiceMessage.duration) {
     messagePayload.voiceMessage = scheduledMessage.voiceMessage;
   }
   
@@ -342,7 +347,12 @@ const sendGroupMessage = async (scheduledMessage) => {
     messagePayload.document = scheduledMessage.document;
   }
   
-  if (scheduledMessage.voiceMessage && typeof scheduledMessage.voiceMessage === 'object' && scheduledMessage.voiceMessage !== null) {
+  // Only add voiceMessage if it's an object with required properties
+  if (scheduledMessage.voiceMessage && 
+      typeof scheduledMessage.voiceMessage === 'object' && 
+      scheduledMessage.voiceMessage !== null &&
+      scheduledMessage.voiceMessage.url &&
+      scheduledMessage.voiceMessage.duration) {
     messagePayload.voiceMessage = scheduledMessage.voiceMessage;
   }
   
