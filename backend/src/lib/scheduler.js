@@ -223,16 +223,32 @@ const sendDirectMessage = async (scheduledMessage) => {
     throw new Error(`Receiver ${scheduledMessage.receiverId} not found`);
   }
   
-  // Create a new direct message object conditionally
+  // Create a new direct message with explicit property checks
   const messagePayload = {
     senderId: scheduledMessage.senderId,
-    receiverId: scheduledMessage.receiverId,
-    ...(scheduledMessage.text && { text: scheduledMessage.text }),
-    ...(scheduledMessage.image && { image: scheduledMessage.image }),
-    ...(scheduledMessage.document && { document: scheduledMessage.document }),
-    ...(scheduledMessage.voiceMessage && { voiceMessage: scheduledMessage.voiceMessage }),
+    receiverId: scheduledMessage.receiverId
   };
   
+  // Only add properties if they exist and are not null/undefined
+  if (scheduledMessage.text) {
+    messagePayload.text = scheduledMessage.text;
+  }
+  
+  if (scheduledMessage.image) {
+    messagePayload.image = scheduledMessage.image;
+  }
+  
+  // Don't add these fields if they're null/undefined
+  if (scheduledMessage.document && typeof scheduledMessage.document === 'object') {
+    messagePayload.document = scheduledMessage.document;
+  }
+  
+  if (scheduledMessage.voiceMessage && typeof scheduledMessage.voiceMessage === 'object' && scheduledMessage.voiceMessage !== null) {
+    messagePayload.voiceMessage = scheduledMessage.voiceMessage;
+  }
+  
+  // Create the new message with our safe payload
+  console.log(`📦 Message payload prepared:`, JSON.stringify(messagePayload));
   const newMessage = new Message(messagePayload);
   
   // Save with detailed error logging
@@ -305,22 +321,38 @@ const sendGroupMessage = async (scheduledMessage) => {
     throw new Error(`Sender ${scheduledMessage.senderId} is no longer a member of group ${scheduledMessage.groupId}`);
   }
   
-  // Create a new group message object conditionally
+  // Create a new group message with explicit property checks
   const messagePayload = {
     senderId: scheduledMessage.senderId,
     groupId: scheduledMessage.groupId,
-    readBy: [scheduledMessage.senderId], // Mark as read by sender
-    ...(scheduledMessage.text && { text: scheduledMessage.text }),
-    ...(scheduledMessage.image && { image: scheduledMessage.image }),
-    ...(scheduledMessage.document && { document: scheduledMessage.document }),
-    ...(scheduledMessage.voiceMessage && { voiceMessage: scheduledMessage.voiceMessage }),
+    readBy: [scheduledMessage.senderId] // Mark as read by sender
   };
-
+  
+  // Only add properties if they exist and are not null/undefined
+  if (scheduledMessage.text) {
+    messagePayload.text = scheduledMessage.text;
+  }
+  
+  if (scheduledMessage.image) {
+    messagePayload.image = scheduledMessage.image;
+  }
+  
+  // Don't add these fields if they're null/undefined
+  if (scheduledMessage.document && typeof scheduledMessage.document === 'object') {
+    messagePayload.document = scheduledMessage.document;
+  }
+  
+  if (scheduledMessage.voiceMessage && typeof scheduledMessage.voiceMessage === 'object' && scheduledMessage.voiceMessage !== null) {
+    messagePayload.voiceMessage = scheduledMessage.voiceMessage;
+  }
+  
+  // Create the new message with our safe payload
+  console.log(`📦 Group message payload prepared:`, JSON.stringify(messagePayload));
   const newGroupMessage = new GroupMessage(messagePayload);
   
   // Save with detailed error logging
   try {
-    console.log(`�� Attempting to save group message to database...`);
+    console.log(`💾 Attempting to save group message to database...`);
     await newGroupMessage.save();
     console.log(`💾 Group message saved with ID: ${newGroupMessage._id}`);
   } catch (saveError) {
