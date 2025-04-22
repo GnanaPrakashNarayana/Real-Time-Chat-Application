@@ -13,9 +13,6 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   isTyping: false,
   typingUsers: {}, // Store typing status keyed by user ID
-  smartReplies: [],
-  isLoadingSmartReplies: false,
-
   isMarkingRead: false,
   sendRetries: {},
 
@@ -128,9 +125,6 @@ export const useChatStore = create((set, get) => ({
     
     set({ messages: [...messages, tempMessage] });
     
-    // Clear smart replies when sending a message
-    set({ smartReplies: [] });
-    
     try {
       // Create a clean copy without any references to file objects
       const apiMessageData = {
@@ -213,15 +207,6 @@ export const useChatStore = create((set, get) => ({
             set(state => ({
               messages: [...state.messages, newMessage],
             }));
-            
-            // Generate smart replies when receiving a new message from the other person
-            if (newMessage.text && messageSenderId === selectedUser._id) {
-              try {
-                get().getSmartReplies(newMessage.text);
-              } catch (smartReplyError) {
-                console.error("Error generating smart replies:", smartReplyError);
-              }
-            }
             
             // Mark message as read if it's from the other person
             if (messageSenderId === selectedUser._id) {
@@ -420,61 +405,6 @@ export const useChatStore = create((set, get) => ({
   },
 
   setSelectedUser: (selectedUser) => {
-    // Clear smart replies immediately when changing user
-    set({ 
-      selectedUser,
-      smartReplies: [], 
-      isLoadingSmartReplies: false 
-    });
-  },
-  
-  // Smart Reply functions
-  getSmartReplies: async (message) => {
-    if (!message || typeof message !== 'string' || message.trim().length < 2) return;
-    
-    set({ isLoadingSmartReplies: true });
-    try {
-      // Get recent messages for context
-      const { messages } = get();
-      
-      if (!Array.isArray(messages)) {
-        set({ smartReplies: [], isLoadingSmartReplies: false });
-        return;
-      }
-      
-      const recentMessages = messages.slice(-5)
-        .map(msg => msg && msg.text && typeof msg.text === 'string' ? msg.text : '')
-        .filter(Boolean);
-      
-      // Decide whether to use context-enhanced endpoint
-      let endpoint = "/smart-replies/generate";
-      let payload = { message };
-      
-      if (recentMessages.length > 1) {
-        endpoint = "/smart-replies/generate-with-context";
-        payload = { 
-          message, 
-          previousMessages: recentMessages 
-        };
-      }
-      
-      const res = await axiosInstance.post(endpoint, payload);
-      
-      // Verify we received valid data
-      if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
-        set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
-      } else {
-        // Fallback to empty array if no valid replies
-        set({ smartReplies: [], isLoadingSmartReplies: false });
-      }
-    } catch (error) {
-      console.error("Error fetching smart replies:", error);
-      // Always ensure we reset loading state and provide a default value
-      set({ smartReplies: [], isLoadingSmartReplies: false });
-    }
-  },
-
-  clearSmartReplies: () => {
-    set({ smartReplies: [] });
+    set({ selectedUser });
   },
 }));

@@ -13,8 +13,6 @@ export const useGroupStore = create((set, get) => ({
   isCreatingGroup: false,
   isCreatingPoll: false,
   typingInGroup: {}, // Map of user IDs typing in each group
-  smartReplies: [],
-  isLoadingSmartReplies: false,
   
   // Create a new group
   createGroup: async (groupData) => {
@@ -86,9 +84,6 @@ export const useGroupStore = create((set, get) => ({
   // Send message to group - updated to handle documents safely
   sendGroupMessage: async (messageData) => {
     const { selectedGroup, groupMessages } = get();
-    
-    // Clear smart replies when sending a message
-    set({ smartReplies: [] });
     
     try {
       // Create a clean copy of messageData without File objects
@@ -365,67 +360,11 @@ export const useGroupStore = create((set, get) => ({
   
   // Set selected group
   setSelectedGroup: (group) => {
-    // Clear smart replies immediately when changing groups
-    set({ 
-      selectedGroup: group,
-      smartReplies: [],
-      isLoadingSmartReplies: false
-    });
+    set({ selectedGroup: group });
     
     if (group) {
       get().getGroupMessages(group._id);
     }
-  },
-  
-  // Get smart replies for the group
-  getSmartReplies: async (message) => {
-    if (!message || typeof message !== 'string' || message.trim().length < 2) return;
-    
-    set({ isLoadingSmartReplies: true });
-    try {
-      // Get recent messages for context
-      const { groupMessages } = get();
-      
-      if (!Array.isArray(groupMessages)) {
-        set({ smartReplies: [], isLoadingSmartReplies: false });
-        return;
-      }
-      
-      const recentMessages = groupMessages.slice(-5)
-        .map(msg => msg && msg.text && typeof msg.text === 'string' ? msg.text : '')
-        .filter(Boolean);
-      
-      // Decide whether to use context-enhanced endpoint
-      let endpoint = "/smart-replies/generate";
-      let payload = { message };
-      
-      if (recentMessages.length > 1) {
-        endpoint = "/smart-replies/generate-with-context";
-        payload = { 
-          message, 
-          previousMessages: recentMessages 
-        };
-      }
-      
-      const res = await axiosInstance.post(endpoint, payload);
-      
-      // Verify we received valid data
-      if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
-        set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
-      } else {
-        // Fallback to empty array if no valid replies
-        set({ smartReplies: [], isLoadingSmartReplies: false });
-      }
-    } catch (error) {
-      console.error("Error fetching smart replies:", error);
-      // Always ensure we reset loading state and provide a default value
-      set({ smartReplies: [], isLoadingSmartReplies: false });
-    }
-  },
-  
-  // Clear smart replies
-  clearSmartReplies: () => {
-    set({ smartReplies: [] });
   },
   
   // Subscribe to group socket events
@@ -494,15 +433,6 @@ export const useGroupStore = create((set, get) => ({
                 });
               } catch (emitError) {
                 console.error("Error emitting readGroupMessage:", emitError);
-              }
-            }
-            
-            // Generate smart replies when receiving a new message with text
-            if (message.text && typeof message.text === 'string' && message.text.trim()) {
-              try {
-                get().getSmartReplies(message.text);
-              } catch (smartReplyError) {
-                console.error("Error generating smart replies:", smartReplyError);
               }
             }
           }

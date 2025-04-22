@@ -12,7 +12,6 @@ import { FileText, Download } from "lucide-react";
 import BookmarkButton from "./BookmarkButton";
 import PollDisplay from "./polls/PollDisplay";
 import ConversationSummaryModal from "./modals/ConversationSummaryModal";
-import SmartReplySuggestions from "./SmartReplySuggestions";
 import { toast } from "react-hot-toast";
 
 const GroupChatContainer = () => {
@@ -24,11 +23,7 @@ const GroupChatContainer = () => {
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
     reactToGroupMessage,
-    smartReplies,
-    isLoadingSmartReplies,
-    sendGroupMessage,
-    clearSmartReplies,
-    getSmartReplies
+    sendGroupMessage
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
@@ -43,32 +38,14 @@ const GroupChatContainer = () => {
   useEffect(() => {
     subscribeToGroupMessages();
     
-    // Clear any existing smart replies to prevent state issues
-    if (typeof clearSmartReplies === 'function') {
-      clearSmartReplies();
-    }
-    
     return () => unsubscribeFromGroupMessages();
-  }, [subscribeToGroupMessages, unsubscribeFromGroupMessages, clearSmartReplies]);
+  }, [subscribeToGroupMessages, unsubscribeFromGroupMessages]);
 
   useEffect(() => {
     if (messageEndRef.current && groupMessages) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [groupMessages]);
-
-  // Handle sending a smart reply
-  const handleSendSmartReply = (text) => {
-    if (!text || typeof text !== 'string') return;
-    
-    try {
-      sendGroupMessage({ text });
-      clearSmartReplies();
-    } catch (error) {
-      console.error("Error sending smart reply:", error);
-      toast.error("Failed to send message");
-    }
-  };
 
   if (isLoadingMessages) {
     return (
@@ -79,32 +56,6 @@ const GroupChatContainer = () => {
       </div>
     );
   }
-
-  // Temporarily disable smart replies generation
-  // useEffect(() => {
-  //   // Only try to get smart replies if there are messages and the last one is from someone else
-  //   if (!groupMessages || !Array.isArray(groupMessages) || groupMessages.length === 0) return;
-  //   
-  //   try {
-  //     const lastMessage = groupMessages[groupMessages.length - 1];
-  //     // Check if last message is from someone else and has text
-  //     if (
-  //       lastMessage && 
-  //       lastMessage.text && 
-  //       typeof lastMessage.text === 'string' &&
-  //       lastMessage.senderId && 
-  //       typeof lastMessage.senderId === 'object' &&
-  //       lastMessage.senderId._id !== authUser?._id
-  //     ) {
-  //       // Get smart replies for the last message
-  //       if (typeof getSmartReplies === 'function') {
-  //         getSmartReplies(lastMessage.text);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error("Error generating smart replies:", error);
-  //   }
-  // }, [groupMessages, authUser?._id, getSmartReplies]);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -246,15 +197,6 @@ const GroupChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
-
-      {/* Temporarily disable Smart Reply suggestions */}
-      {/* {Array.isArray(smartReplies) && smartReplies.length > 0 && (
-        <SmartReplySuggestions 
-          suggestions={smartReplies} 
-          onSendReply={handleSendSmartReply}
-          isLoading={isLoadingSmartReplies}
-        />
-      )} */}
 
       <GroupMessageInput />
       
