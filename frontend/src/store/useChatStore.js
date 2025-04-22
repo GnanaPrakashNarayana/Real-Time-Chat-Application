@@ -186,7 +186,12 @@ export const useChatStore = create((set, get) => ({
             return;
           }
           
-          const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
+          // Extract the sender ID properly whether it's an object or string
+          const messageSenderId = typeof newMessage.senderId === 'object' 
+            ? newMessage.senderId._id 
+            : newMessage.senderId;
+            
+          const isMessageFromSelectedUser = messageSenderId === selectedUser._id;
           if (isMessageFromSelectedUser) {
             set({
               messages: [...get().messages, newMessage],
