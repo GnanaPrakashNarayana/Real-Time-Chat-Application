@@ -79,4 +79,42 @@ router.get('/scheduled-pending', protectRoute, async (_req, res) => {
     res.json(pending);
   });
 
+// Endpoint to view all pending scheduled messages
+router.get("/scheduled-pending", protectRoute, async (req, res) => {
+  try {
+    const pending = await ScheduledMessage.find({ status: "scheduled" })
+      .select("-__v")
+      .sort({ scheduledFor: 1 });
+    
+    // Add current server time for comparison
+    const serverTime = new Date();
+    
+    // Format each message with time difference info
+    const formattedMessages = pending.map(msg => {
+      const msgObj = msg.toObject();
+      const diff = msg.scheduledFor.getTime() - serverTime.getTime();
+      const diffMinutes = Math.round(diff / (60 * 1000));
+      
+      return {
+        ...msgObj,
+        _timeInfo: {
+          serverTimeNow: serverTime.toISOString(),
+          diffMs: diff,
+          diffMinutes,
+          isPast: diff < 0
+        }
+      };
+    });
+    
+    res.status(200).json({
+      serverTime: serverTime.toISOString(),
+      count: pending.length,
+      messages: formattedMessages
+    });
+  } catch (error) {
+    console.error("Error getting pending scheduled messages:", error);
+    res.status(500).json({ error: "Error retrieving pending messages" });
+  }
+});
+
 export default router;

@@ -9,9 +9,22 @@ export const createScheduledMessage = async (req, res) => {
     const { receiverId, groupId, text, image, document, voiceMessage, scheduledFor } = req.body;
     const senderId = req.user._id;
     
-    // Validate the scheduled time
-    const scheduledTime = new Date(Number(scheduledFor));
+    // Validate the scheduled time - add debug logs to troubleshoot timing issues
+    console.log(`🕒 Received scheduledFor: ${scheduledFor}, type: ${typeof scheduledFor}`);
+    
+    // Handle both timestamp (milliseconds) and ISO string formats
+    let scheduledTime;
+    if (typeof scheduledFor === 'number' || !isNaN(Number(scheduledFor))) {
+      scheduledTime = new Date(Number(scheduledFor));
+      console.log(`🕒 Parsed as timestamp: ${scheduledTime.toISOString()}`);
+    } else {
+      scheduledTime = new Date(scheduledFor);
+      console.log(`🕒 Parsed as string: ${scheduledTime.toISOString()}`);
+    }
+    
     const now = new Date();
+    console.log(`🕒 Server time now: ${now.toISOString()}`);
+    console.log(`🕒 Time difference (ms): ${scheduledTime.getTime() - now.getTime()}`);
     
     if (scheduledTime <= now) {
       return res.status(400).json({ message: "Scheduled time must be in the future" });

@@ -33,7 +33,7 @@ const ScheduleMessageModal = ({ isOpen, onClose, receiverId = null, groupId = nu
       image: message.image ? { data: message.image.data, name: message.image.name } : null, 
       document: message.document ? { data: message.document.data, name: message.document.name, type: message.document.type, size: message.document.size } : null,
       voiceMessage: message.voiceMessage ? { data: message.voiceMessage.data, duration: message.voiceMessage.duration } : null,
-      scheduledFor: scheduledFor.toISOString()
+      scheduledFor: scheduledFor.getTime()
     };
     
     const success = await createScheduledMessage(scheduledMessage);
