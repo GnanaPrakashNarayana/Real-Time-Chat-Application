@@ -372,43 +372,40 @@ export const useGroupStore = create((set, get) => ({
   },
   
   // Get smart replies for the group
-  // Update this section in frontend/src/store/useChatStore.js
-
-// Smart Reply functions
-getSmartReplies: async (message) => {
-  if (!message || typeof message !== 'string' || message.trim().length < 2) return;
-  
-  set({ isLoadingSmartReplies: true });
-  try {
-    // Get recent messages for context
-    const { messages } = get();
-    const recentMessages = messages.slice(-5).map(msg => msg.text).filter(Boolean);
+  getSmartReplies: async (message) => {
+    if (!message || typeof message !== 'string' || message.trim().length < 2) return;
     
-    // Decide whether to use context-enhanced endpoint
-    let endpoint = "/smart-replies/generate";
-    let payload = { message };
-    
-    if (recentMessages.length > 1) {
-      endpoint = "/smart-replies/generate-with-context";
-      payload = { 
-        message, 
-        previousMessages: recentMessages 
-      };
-    }
-    
-    const res = await axiosInstance.post(endpoint, payload);
-    
-    // Verify we received valid data
-    if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
-      set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
-    } else {
+    set({ isLoadingSmartReplies: true });
+    try {
+      // Get recent messages for context
+      const { groupMessages } = get();
+      const recentMessages = groupMessages.slice(-5).map(msg => msg.text).filter(Boolean);
+      
+      // Decide whether to use context-enhanced endpoint
+      let endpoint = "/smart-replies/generate";
+      let payload = { message };
+      
+      if (recentMessages.length > 1) {
+        endpoint = "/smart-replies/generate-with-context";
+        payload = { 
+          message, 
+          previousMessages: recentMessages 
+        };
+      }
+      
+      const res = await axiosInstance.post(endpoint, payload);
+      
+      // Verify we received valid data
+      if (res.data && Array.isArray(res.data.replies) && res.data.replies.length > 0) {
+        set({ smartReplies: res.data.replies, isLoadingSmartReplies: false });
+      } else {
+        set({ smartReplies: [], isLoadingSmartReplies: false });
+      }
+    } catch (error) {
+      console.error("Error fetching smart replies:", error);
       set({ smartReplies: [], isLoadingSmartReplies: false });
     }
-  } catch (error) {
-    console.error("Error fetching smart replies:", error);
-    set({ smartReplies: [], isLoadingSmartReplies: false });
-  }
-},
+  },
   
   // Clear smart replies
   clearSmartReplies: () => {
@@ -416,373 +413,370 @@ getSmartReplies: async (message) => {
   },
   
   // Subscribe to group socket events
-  // In useGroupStore.js
-
-// Subscribe to group socket events
-subscribeToGroupMessages: () => {
-  const socket = useAuthStore.getState().socket;
-  if (!socket) {
-    console.warn("Cannot subscribe to group messages: Socket not available");
-    return;
-  }
-  
-  try {
-    // Handle new group message
-    socket.on("newGroupMessage", (data) => {
-      try {
-        if (!data || typeof data !== 'object') {
-          console.warn("Received invalid newGroupMessage data:", data);
-          return;
-        }
-        
-        const message = data.message || {};
-        const group = data.group || {};
-        
-        if (!message._id || !group._id) {
-          console.warn("Received incomplete message or group data:", data);
-          return;
-        }
-        
-        const { selectedGroup, groupMessages } = get();
-        
-        // Add message to current chat if selected
-        if (selectedGroup && selectedGroup._id === group._id) {
-          // Ensure message has safe structure
-          const safeMessage = {
-            ...message,
-            senderId: message.senderId || { _id: "", fullName: "Unknown" },
-            text: message.text || "",
-            createdAt: message.createdAt || new Date().toISOString(),
-            poll: message.poll ? {
-              ...message.poll,
-              _id: message.poll._id || "",
-              question: message.poll.question || "",
-              options: Array.isArray(message.poll.options) 
-                ? message.poll.options.map(option => ({
-                    _id: option._id || "",
-                    text: option.text || "",
-                    votes: Array.isArray(option.votes) ? option.votes : []
-                  }))
-                : [],
-              isActive: message.poll.isActive !== false,
-              creator: message.poll.creator && typeof message.poll.creator === 'object'
-                ? message.poll.creator
-                : { _id: "", fullName: "Unknown" }
-            } : null,
-            reactions: Array.isArray(message.reactions) ? message.reactions : [],
-            readBy: Array.isArray(message.readBy) ? message.readBy : []
-          };
-          
-          set({ groupMessages: [...groupMessages, safeMessage] });
-          
-          // Mark as read if socket is available
-          if (socket && typeof socket.emit === 'function') {
-            try {
-              socket.emit("readGroupMessage", {
-                messageId: message._id,
-                groupId: group._id
-              });
-            } catch (emitError) {
-              console.error("Error emitting readGroupMessage:", emitError);
-            }
-          }
-          
-          // Generate smart replies when receiving a new message with text
-          if (message.text && typeof message.text === 'string' && message.text.trim()) {
-            try {
-              get().getSmartReplies(message.text);
-            } catch (smartReplyError) {
-              console.error("Error generating smart replies:", smartReplyError);
-            }
-          }
-        }
-        
-        // Toast notification for messages in other groups
-        if (!selectedGroup || selectedGroup._id !== group._id) {
-          try {
-            // Create a styled toast without JSX
-            toast.custom((t) => {
-              const toastId = t.id;
-              const element = document.createElement('div');
-              element.className = 'cursor-pointer p-3 bg-primary text-primary-content rounded';
-              element.innerHTML = `<b>${group.name || "Group"}</b>: ${message.text || "Sent an attachment"}`;
-              element.onclick = () => {
-                try {
-                  const targetGroup = get().groups.find(g => g._id === group._id);
-                  if (targetGroup) {
-                    get().setSelectedGroup(targetGroup);
-                  }
-                  toast.dismiss(toastId);
-                } catch (clickError) {
-                  console.error("Error handling toast click:", clickError);
-                }
-              };
-              return element;
-            }, { duration: 4000 });
-          } catch (toastError) {
-            console.error("Error showing toast notification:", toastError);
-          }
-        }
-      } catch (messageError) {
-        console.error("Error handling newGroupMessage event:", messageError);
-      }
-    });
+  subscribeToGroupMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) {
+      console.warn("Cannot subscribe to group messages: Socket not available");
+      return;
+    }
     
-    // Handle poll votes with extremely safe handling
-    socket.on("pollVote", (data) => {
-      try {
-        console.log("Received poll vote socket event:", data);
-        if (!data || typeof data !== 'object') {
-          console.warn("Received invalid pollVote data:", data);
-          return;
-        }
-        
-        const { groupId, messageId, pollId } = data;
-        if (!groupId || !messageId) {
-          console.warn("Missing required poll vote data:", data);
-          return;
-        }
-        
-        const { selectedGroup } = get();
-        
-        if (selectedGroup && selectedGroup._id === groupId) {
-          // Make sure poll exists and has safe structure
-          const poll = data.poll || {};
+    try {
+      // Handle new group message
+      socket.on("newGroupMessage", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid newGroupMessage data:", data);
+            return;
+          }
           
-          // Create a completely safe poll object with all required properties
-          const safePoll = {
-            _id: poll._id || pollId || '',
-            question: typeof poll.question === 'string' ? poll.question : 'Poll',
-            options: [],
-            isActive: poll.isActive !== false,
-            creator: { _id: '', fullName: 'Unknown', profilePic: '' }
-          };
+          const message = data.message || {};
+          const group = data.group || {};
           
-          // Safely add options if they exist
-          if (Array.isArray(poll.options)) {
-            safePoll.options = poll.options.map(option => ({
-              _id: option._id || '',
-              text: typeof option.text === 'string' ? option.text : '',
-              votes: Array.isArray(option.votes) ? option.votes : []
+          if (!message._id || !group._id) {
+            console.warn("Received incomplete message or group data:", data);
+            return;
+          }
+          
+          const { selectedGroup, groupMessages } = get();
+          
+          // Add message to current chat if selected
+          if (selectedGroup && selectedGroup._id === group._id) {
+            // Ensure message has safe structure
+            const safeMessage = {
+              ...message,
+              senderId: message.senderId || { _id: "", fullName: "Unknown" },
+              text: message.text || "",
+              createdAt: message.createdAt || new Date().toISOString(),
+              poll: message.poll ? {
+                ...message.poll,
+                _id: message.poll._id || "",
+                question: message.poll.question || "",
+                options: Array.isArray(message.poll.options) 
+                  ? message.poll.options.map(option => ({
+                      _id: option._id || "",
+                      text: option.text || "",
+                      votes: Array.isArray(option.votes) ? option.votes : []
+                    }))
+                  : [],
+                isActive: message.poll.isActive !== false,
+                creator: message.poll.creator && typeof message.poll.creator === 'object'
+                  ? message.poll.creator
+                  : { _id: "", fullName: "Unknown" }
+              } : null,
+              reactions: Array.isArray(message.reactions) ? message.reactions : [],
+              readBy: Array.isArray(message.readBy) ? message.readBy : []
+            };
+            
+            set({ groupMessages: [...groupMessages, safeMessage] });
+            
+            // Mark as read if socket is available
+            if (socket && typeof socket.emit === 'function') {
+              try {
+                socket.emit("readGroupMessage", {
+                  messageId: message._id,
+                  groupId: group._id
+                });
+              } catch (emitError) {
+                console.error("Error emitting readGroupMessage:", emitError);
+              }
+            }
+            
+            // Generate smart replies when receiving a new message with text
+            if (message.text && typeof message.text === 'string' && message.text.trim()) {
+              try {
+                get().getSmartReplies(message.text);
+              } catch (smartReplyError) {
+                console.error("Error generating smart replies:", smartReplyError);
+              }
+            }
+          }
+          
+          // Toast notification for messages in other groups
+          if (!selectedGroup || selectedGroup._id !== group._id) {
+            try {
+              // Create a styled toast without JSX
+              toast.custom((t) => {
+                const toastId = t.id;
+                const element = document.createElement('div');
+                element.className = 'cursor-pointer p-3 bg-primary text-primary-content rounded';
+                element.innerHTML = `<b>${group.name || "Group"}</b>: ${message.text || "Sent an attachment"}`;
+                element.onclick = () => {
+                  try {
+                    const targetGroup = get().groups.find(g => g._id === group._id);
+                    if (targetGroup) {
+                      get().setSelectedGroup(targetGroup);
+                    }
+                    toast.dismiss(toastId);
+                  } catch (clickError) {
+                    console.error("Error handling toast click:", clickError);
+                  }
+                };
+                return element;
+              }, { duration: 4000 });
+            } catch (toastError) {
+              console.error("Error showing toast notification:", toastError);
+            }
+          }
+        } catch (messageError) {
+          console.error("Error handling newGroupMessage event:", messageError);
+        }
+      });
+      
+      // Handle poll votes with extremely safe handling
+      socket.on("pollVote", (data) => {
+        try {
+          console.log("Received poll vote socket event:", data);
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid pollVote data:", data);
+            return;
+          }
+          
+          const { groupId, messageId, pollId } = data;
+          if (!groupId || !messageId) {
+            console.warn("Missing required poll vote data:", data);
+            return;
+          }
+          
+          const { selectedGroup } = get();
+          
+          if (selectedGroup && selectedGroup._id === groupId) {
+            // Make sure poll exists and has safe structure
+            const poll = data.poll || {};
+            
+            // Create a completely safe poll object with all required properties
+            const safePoll = {
+              _id: poll._id || pollId || '',
+              question: typeof poll.question === 'string' ? poll.question : 'Poll',
+              options: [],
+              isActive: poll.isActive !== false,
+              creator: { _id: '', fullName: 'Unknown', profilePic: '' }
+            };
+            
+            // Safely add options if they exist
+            if (Array.isArray(poll.options)) {
+              safePoll.options = poll.options.map(option => ({
+                _id: option._id || '',
+                text: typeof option.text === 'string' ? option.text : '',
+                votes: Array.isArray(option.votes) ? option.votes : []
+              }));
+            }
+            
+            // Safely add creator if it exists
+            if (poll.creator && typeof poll.creator === 'object') {
+              safePoll.creator = {
+                _id: poll.creator._id || '',
+                fullName: typeof poll.creator.fullName === 'string' ? poll.creator.fullName : 'Unknown',
+                profilePic: typeof poll.creator.profilePic === 'string' ? poll.creator.profilePic : ''
+              };
+            }
+            
+            // Update state very safely
+            set(state => ({
+              groupMessages: state.groupMessages.map(msg => {
+                if (msg._id === messageId && msg.poll) {
+                  return {
+                    ...msg,
+                    poll: safePoll
+                  };
+                }
+                return msg;
+              })
             }));
           }
-          
-          // Safely add creator if it exists
-          if (poll.creator && typeof poll.creator === 'object') {
-            safePoll.creator = {
-              _id: poll.creator._id || '',
-              fullName: typeof poll.creator.fullName === 'string' ? poll.creator.fullName : 'Unknown',
-              profilePic: typeof poll.creator.profilePic === 'string' ? poll.creator.profilePic : ''
-            };
+        } catch (pollVoteError) {
+          console.error("Error handling pollVote event:", pollVoteError);
+        }
+      });
+      
+      // Handle poll ended
+      socket.on("pollEnded", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid pollEnded data:", data);
+            return;
           }
           
-          // Update state very safely
-          set(state => ({
-            groupMessages: state.groupMessages.map(msg => {
-              if (msg._id === messageId && msg.poll) {
-                return {
-                  ...msg,
-                  poll: safePoll
-                };
-              }
-              return msg;
-            })
-          }));
-        }
-      } catch (pollVoteError) {
-        console.error("Error handling pollVote event:", pollVoteError);
-      }
-    });
-    
-    // Handle poll ended
-    socket.on("pollEnded", (data) => {
-      try {
-        if (!data || typeof data !== 'object') {
-          console.warn("Received invalid pollEnded data:", data);
-          return;
-        }
-        
-        const { pollId, messageId, groupId } = data;
-        if (!groupId || !messageId) return;
-        
-        const { selectedGroup } = get();
-        
-        if (selectedGroup && selectedGroup._id === groupId) {
-          set(state => ({
-            groupMessages: state.groupMessages.map(msg => {
-              if (msg._id === messageId && msg.poll) {
-                return { 
-                  ...msg, 
-                  poll: {
-                    ...msg.poll,
-                    isActive: false
-                  } 
-                };
-              }
-              return msg;
-            })
-          }));
-        }
-      } catch (pollEndedError) {
-        console.error("Error handling pollEnded event:", pollEndedError);
-      }
-    });
-    
-    // Handle new group
-    socket.on("newGroup", (group) => {
-      try {
-        if (!group || typeof group !== 'object' || !group._id) {
-          console.warn("Received invalid newGroup data:", group);
-          return;
-        }
-        
-        set(state => ({
-          groups: [group, ...state.groups]
-        }));
-        
-        toast.success(`You were added to group: ${group.name || "New group"}`);
-      } catch (newGroupError) {
-        console.error("Error handling newGroup event:", newGroupError);
-      }
-    });
-    
-    // Handle group updates
-    socket.on("groupUpdated", (updatedGroup) => {
-      try {
-        if (!updatedGroup || typeof updatedGroup !== 'object' || !updatedGroup._id) {
-          console.warn("Received invalid groupUpdated data:", updatedGroup);
-          return;
-        }
-        
-        set(state => ({
-          groups: state.groups.map(g => 
-            g._id === updatedGroup._id ? updatedGroup : g
-          ),
-          selectedGroup: state.selectedGroup?._id === updatedGroup._id 
-            ? updatedGroup 
-            : state.selectedGroup
-        }));
-      } catch (groupUpdatedError) {
-        console.error("Error handling groupUpdated event:", groupUpdatedError);
-      }
-    });
-    
-    // Handle removed from group
-    socket.on("removedFromGroup", (data) => {
-      try {
-        if (!data || typeof data !== 'object' || !data.groupId) {
-          console.warn("Received invalid removedFromGroup data:", data);
-          return;
-        }
-        
-        set(state => ({
-          groups: state.groups.filter(g => g._id !== data.groupId),
-          selectedGroup: state.selectedGroup?._id === data.groupId ? null : state.selectedGroup
-        }));
-        
-        toast.info(data.message || "You were removed from a group");
-      } catch (removedFromGroupError) {
-        console.error("Error handling removedFromGroup event:", removedFromGroupError);
-      }
-    });
-    
-    // Handle added to group
-    socket.on("addedToGroup", (group) => {
-      try {
-        if (!group || typeof group !== 'object' || !group._id) {
-          console.warn("Received invalid addedToGroup data:", group);
-          return;
-        }
-        
-        set(state => ({
-          groups: [group, ...state.groups]
-        }));
-        
-        toast.success(`You were added to group: ${group.name || "New group"}`);
-      } catch (addedToGroupError) {
-        console.error("Error handling addedToGroup event:", addedToGroupError);
-      }
-    });
-    
-    // Handle typing in group
-    socket.on("typingInGroup", (data) => {
-      try {
-        if (!data || typeof data !== 'object') {
-          console.warn("Received invalid typingInGroup data:", data);
-          return;
-        }
-        
-        const { groupId, userId, isTyping } = data;
-        if (!groupId || !userId) return;
-        
-        set(state => ({
-          typingInGroup: {
-            ...state.typingInGroup,
-            [groupId]: {
-              ...state.typingInGroup[groupId],
-              [userId]: isTyping === true
-            }
-          }
-        }));
-      } catch (typingInGroupError) {
-        console.error("Error handling typingInGroup event:", typingInGroupError);
-      }
-    });
-
-    // Handle group message reactions
-    socket.on("groupMessageReaction", (data) => {
-      try {
-        if (!data || typeof data !== 'object') {
-          console.warn("Received invalid groupMessageReaction data:", data);
-          return;
-        }
-        
-        const { messageId, groupId, reaction, removed } = data;
-        if (!messageId || !groupId) return;
-        
-        const { selectedGroup, groupMessages } = get();
-        
-        // Only update if this is the currently selected group
-        if (selectedGroup && selectedGroup._id === groupId) {
-          set({
-            groupMessages: groupMessages.map(msg => {
-              if (msg._id === messageId) {
-                // Ensure reactions is always an array
-                const currentReactions = Array.isArray(msg.reactions) ? msg.reactions : [];
-                
-                // If reaction was removed
-                if (removed) {
-                  return {
-                    ...msg,
-                    reactions: currentReactions.filter(r => 
-                      !(r.userId === reaction?.userId && r.emoji === reaction?.emoji)
-                    )
+          const { pollId, messageId, groupId } = data;
+          if (!groupId || !messageId) return;
+          
+          const { selectedGroup } = get();
+          
+          if (selectedGroup && selectedGroup._id === groupId) {
+            set(state => ({
+              groupMessages: state.groupMessages.map(msg => {
+                if (msg._id === messageId && msg.poll) {
+                  return { 
+                    ...msg, 
+                    poll: {
+                      ...msg.poll,
+                      isActive: false
+                    } 
                   };
                 }
-                
-                // If new reaction was added and it's valid
-                if (reaction && typeof reaction === 'object' && reaction.emoji) {
-                  return {
-                    ...msg,
-                    reactions: [...currentReactions, reaction]
-                  };
-                }
-                
                 return msg;
-              }
-              return msg;
-            })
-          });
+              })
+            }));
+          }
+        } catch (pollEndedError) {
+          console.error("Error handling pollEnded event:", pollEndedError);
         }
-      } catch (reactionError) {
-        console.error("Error handling groupMessageReaction event:", reactionError);
-      }
-    });
-    
-  } catch (error) {
-    console.error("Error setting up group message subscription:", error);
-  }
-},
+      });
+      
+      // Handle new group
+      socket.on("newGroup", (group) => {
+        try {
+          if (!group || typeof group !== 'object' || !group._id) {
+            console.warn("Received invalid newGroup data:", group);
+            return;
+          }
+          
+          set(state => ({
+            groups: [group, ...state.groups]
+          }));
+          
+          toast.success(`You were added to group: ${group.name || "New group"}`);
+        } catch (newGroupError) {
+          console.error("Error handling newGroup event:", newGroupError);
+        }
+      });
+      
+      // Handle group updates
+      socket.on("groupUpdated", (updatedGroup) => {
+        try {
+          if (!updatedGroup || typeof updatedGroup !== 'object' || !updatedGroup._id) {
+            console.warn("Received invalid groupUpdated data:", updatedGroup);
+            return;
+          }
+          
+          set(state => ({
+            groups: state.groups.map(g => 
+              g._id === updatedGroup._id ? updatedGroup : g
+            ),
+            selectedGroup: state.selectedGroup?._id === updatedGroup._id 
+              ? updatedGroup 
+              : state.selectedGroup
+          }));
+        } catch (groupUpdatedError) {
+          console.error("Error handling groupUpdated event:", groupUpdatedError);
+        }
+      });
+      
+      // Handle removed from group
+      socket.on("removedFromGroup", (data) => {
+        try {
+          if (!data || typeof data !== 'object' || !data.groupId) {
+            console.warn("Received invalid removedFromGroup data:", data);
+            return;
+          }
+          
+          set(state => ({
+            groups: state.groups.filter(g => g._id !== data.groupId),
+            selectedGroup: state.selectedGroup?._id === data.groupId ? null : state.selectedGroup
+          }));
+          
+          toast.info(data.message || "You were removed from a group");
+        } catch (removedFromGroupError) {
+          console.error("Error handling removedFromGroup event:", removedFromGroupError);
+        }
+      });
+      
+      // Handle added to group
+      socket.on("addedToGroup", (group) => {
+        try {
+          if (!group || typeof group !== 'object' || !group._id) {
+            console.warn("Received invalid addedToGroup data:", group);
+            return;
+          }
+          
+          set(state => ({
+            groups: [group, ...state.groups]
+          }));
+          
+          toast.success(`You were added to group: ${group.name || "New group"}`);
+        } catch (addedToGroupError) {
+          console.error("Error handling addedToGroup event:", addedToGroupError);
+        }
+      });
+      
+      // Handle typing in group
+      socket.on("typingInGroup", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid typingInGroup data:", data);
+            return;
+          }
+          
+          const { groupId, userId, isTyping } = data;
+          if (!groupId || !userId) return;
+          
+          set(state => ({
+            typingInGroup: {
+              ...state.typingInGroup,
+              [groupId]: {
+                ...state.typingInGroup[groupId],
+                [userId]: isTyping === true
+              }
+            }
+          }));
+        } catch (typingInGroupError) {
+          console.error("Error handling typingInGroup event:", typingInGroupError);
+        }
+      });
+
+      // Handle group message reactions
+      socket.on("groupMessageReaction", (data) => {
+        try {
+          if (!data || typeof data !== 'object') {
+            console.warn("Received invalid groupMessageReaction data:", data);
+            return;
+          }
+          
+          const { messageId, groupId, reaction, removed } = data;
+          if (!messageId || !groupId) return;
+          
+          const { selectedGroup, groupMessages } = get();
+          
+          // Only update if this is the currently selected group
+          if (selectedGroup && selectedGroup._id === groupId) {
+            set({
+              groupMessages: groupMessages.map(msg => {
+                if (msg._id === messageId) {
+                  // Ensure reactions is always an array
+                  const currentReactions = Array.isArray(msg.reactions) ? msg.reactions : [];
+                  
+                  // If reaction was removed
+                  if (removed) {
+                    return {
+                      ...msg,
+                      reactions: currentReactions.filter(r => 
+                        !(r.userId === reaction?.userId && r.emoji === reaction?.emoji)
+                      )
+                    };
+                  }
+                  
+                  // If new reaction was added and it's valid
+                  if (reaction && typeof reaction === 'object' && reaction.emoji) {
+                    return {
+                      ...msg,
+                      reactions: [...currentReactions, reaction]
+                    };
+                  }
+                  
+                  return msg;
+                }
+                return msg;
+              })
+            });
+          }
+        } catch (reactionError) {
+          console.error("Error handling groupMessageReaction event:", reactionError);
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error setting up group message subscription:", error);
+    }
+  },
   
   // Unsubscribe from group events
   unsubscribeFromGroupMessages: () => {
