@@ -27,6 +27,10 @@ const ChatContainer = () => {
     markMessagesAsRead,
     typingUsers,
     reactToMessage,
+    smartReplies,
+    isLoadingSmartReplies,
+    sendMessage,
+    clearSmartReplies
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
@@ -52,6 +56,14 @@ const ChatContainer = () => {
       markMessagesAsRead();
     }
   }, [messages, markMessagesAsRead]);
+
+  // Handle sending a smart reply
+  const handleSendSmartReply = (text) => {
+    if (text) {
+      sendMessage({ text });
+      clearSmartReplies();
+    }
+  };
 
   // Function to fetch conversation summary
   const fetchConversationSummary = async () => {
@@ -262,14 +274,15 @@ const ChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
-      <SmartReplySuggestions 
-        suggestions={useChatStore().smartReplies}
-        onSendReply={(text) => {
-          useChatStore().sendMessage({ text });
-          useChatStore().clearSmartReplies();
-        }}
-        isLoading={useChatStore().isLoadingSmartReplies}
-      />
+
+      {/* Add Smart Reply suggestions */}
+      {smartReplies && smartReplies.length > 0 && (
+        <SmartReplySuggestions 
+          suggestions={smartReplies} 
+          onSendReply={handleSendSmartReply}
+          isLoading={isLoadingSmartReplies}
+        />
+      )}
 
       <MessageInput />
       

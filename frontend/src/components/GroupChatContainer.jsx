@@ -8,7 +8,7 @@ import MessageReactions from "./MessageReactions";
 import GroupHeader from "./GroupHeader";
 import GroupMessageInput from "./GroupMessageInput";
 import AudioPlayer from "./AudioPlayer";
-import { FileText, Download, BarChart2 } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import BookmarkButton from "./BookmarkButton";
 import PollDisplay from "./polls/PollDisplay";
 import ConversationSummaryModal from "./modals/ConversationSummaryModal";
@@ -23,6 +23,10 @@ const GroupChatContainer = () => {
     subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
     reactToGroupMessage,
+    smartReplies,
+    isLoadingSmartReplies,
+    sendGroupMessage,
+    clearSmartReplies
   } = useGroupStore();
   
   const { authUser } = useAuthStore();
@@ -44,6 +48,14 @@ const GroupChatContainer = () => {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [groupMessages]);
+
+  // Handle sending a smart reply
+  const handleSendSmartReply = (text) => {
+    if (text) {
+      sendGroupMessage({ text });
+      clearSmartReplies();
+    }
+  };
 
   if (isLoadingMessages) {
     return (
@@ -195,14 +207,15 @@ const GroupChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
-      <SmartReplySuggestions 
-        suggestions={useGroupStore().smartReplies}
-        onSendReply={(text) => {
-          useGroupStore().sendGroupMessage({ text });
-          useGroupStore().clearSmartReplies();
-        }}
-        isLoading={useGroupStore().isLoadingSmartReplies}
-      />
+
+      {/* Add Smart Reply suggestions */}
+      {smartReplies && smartReplies.length > 0 && (
+        <SmartReplySuggestions 
+          suggestions={smartReplies} 
+          onSendReply={handleSendSmartReply}
+          isLoading={isLoadingSmartReplies}
+        />
+      )}
 
       <GroupMessageInput />
       
