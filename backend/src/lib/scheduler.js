@@ -1,4 +1,4 @@
-// backend/src/lib/scheduler.js
+// backend/src/lib/scheduler.js - COMPLETE REVISED FILE
 import ScheduledMessage from "../models/scheduledMessage.model.js";
 import Message from "../models/message.model.js";
 import GroupMessage from "../models/groupMessage.model.js";
@@ -48,31 +48,28 @@ const initScheduler = () => {
     return schedulerStats;
   };
   
+  // Add function to process a specific message
+  global.processSpecificMessage = async (scheduledMessage) => {
+    try {
+      console.log(`🔍 Manually processing specific message: ${scheduledMessage._id}`);
+      await sendScheduledMessage(scheduledMessage);
+      return {
+        success: true,
+        messageId: scheduledMessage._id,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      console.error(`⚠️ Error processing specific message:`, error);
+      return {
+        success: false, 
+        error: error.message,
+        messageId: scheduledMessage._id,
+        timestamp: new Date()
+      };
+    }
+  };
+  
   return job; // Return the job for potential management later
-};
-// Add this after initScheduler function in scheduler.js
-// Global function to process a specific message
-global.processSpecificMessage = async (scheduledMessage) => {
-  try {
-    console.log(`🔍 Manually processing specific message: ${scheduledMessage._id}`);
-    
-    // Process the message
-    await sendScheduledMessage(scheduledMessage);
-    
-    return {
-      success: true,
-      messageId: scheduledMessage._id,
-      timestamp: new Date()
-    };
-  } catch (error) {
-    console.error(`⚠️ Error processing specific message:`, error);
-    return {
-      success: false, 
-      error: error.message,
-      messageId: scheduledMessage._id,
-      timestamp: new Date()
-    };
-  }
 };
 
 // Wrapper function to handle scheduler execution with error handling and stats
@@ -105,10 +102,9 @@ const processScheduledMessages = async (isManualRun = false) => {
   try {
     const now = new Date();
     console.log(`⏰ Checking for scheduled messages at ${now.toISOString()}${isManualRun ? ' (MANUAL RUN)' : ''}`);
+    console.log(`⏰ Timezone: ${now.toString()}`); // Log timezone info for debugging
     
-    // Find scheduled messages due to be sent - with a safety margin to account for slight delays
-    const cutoffTime = new Date(now.getTime() + 60000); // Add 1 minute buffer
-    
+    // Include all messages scheduled for now or earlier that are still in 'scheduled' status
     const messagesToSend = await ScheduledMessage.find({
       scheduledFor: { $lte: now },
       status: "scheduled"
@@ -117,9 +113,13 @@ const processScheduledMessages = async (isManualRun = false) => {
     if (messagesToSend.length > 0) {
       console.log(`📨 Found ${messagesToSend.length} scheduled messages to send`);
       
+      // Log the IDs for debugging
+      console.log(`📨 Message IDs: ${messagesToSend.map(m => m._id).join(', ')}`);
+      
       // Process each message
       for (const scheduledMessage of messagesToSend) {
         try {
+          console.log(`🔄 Starting to process message: ${scheduledMessage._id}`);
           await sendScheduledMessage(scheduledMessage);
           schedulerStats.messagesProcessed++;
         } catch (error) {
@@ -134,16 +134,32 @@ const processScheduledMessages = async (isManualRun = false) => {
     } else {
       console.log("👍 No pending scheduled messages found");
       
-      // Double-check by looking for any messages that might have been missed
+      // Look for any messages that might have been missed
       if (isManualRun) {
-        // FIX: Use countDocuments() instead of count()
-        const missedMessages = await ScheduledMessage.countDocuments({
-          scheduledFor: { $lte: new Date(now.getTime() - 60000) }, // Any message scheduled for more than 1 minute ago
+        // Find messages scheduled for more than 1 minute ago that are still pending
+        const missedMessages = await ScheduledMessage.find({
+          scheduledFor: { $lte: new Date(now.getTime() - 60000) }, 
           status: "scheduled"
-        });
+        }).sort({ scheduledFor: 1 });
         
-        if (missedMessages > 0) {
-          console.warn(`⚠️ Found ${missedMessages} potentially missed messages from earlier - will retry`);
+        if (missedMessages.length > 0) {
+          console.warn(`⚠️ Found ${missedMessages.length} potentially missed messages from earlier - will process them`);
+          
+          // Actually process the missed messages
+          for (const missedMessage of missedMessages) {
+            try {
+              console.log(`🔄 Processing missed message: ${missedMessage._id}`);
+              await sendScheduledMessage(missedMessage);
+              schedulerStats.messagesProcessed++;
+            } catch (error) {
+              schedulerStats.messagesFailed++;
+              console.error(`❌ Error sending missed message ${missedMessage._id}:`, error);
+              
+              // Mark as failed but continue with other messages
+              missedMessage.status = "failed";
+              await missedMessage.save();
+            }
+          }
         }
       }
     }
@@ -155,6 +171,15 @@ const processScheduledMessages = async (isManualRun = false) => {
 
 const sendScheduledMessage = async (scheduledMessage) => {
   console.log(`🚀 Processing scheduled message: ${scheduledMessage._id} (scheduled for ${scheduledMessage.scheduledFor.toISOString()})`);
+  
+  // Validate message content
+  if (!scheduledMessage.text && !scheduledMessage.image && 
+      !scheduledMessage.document && !scheduledMessage.voiceMessage) {
+    console.warn(`⚠️ Message ${scheduledMessage._id} has no content - marking as failed`);
+    scheduledMessage.status = "failed";
+    await scheduledMessage.save();
+    throw new Error("Message has no content");
+  }
   
   try {
     // Check if it's a direct message or group message
@@ -208,8 +233,15 @@ const sendDirectMessage = async (scheduledMessage) => {
     voiceMessage: scheduledMessage.voiceMessage,
   });
   
-  await newMessage.save();
-  console.log(`💾 Direct message saved with ID: ${newMessage._id}`);
+  // Save with detailed error logging
+  try {
+    console.log(`💾 Attempting to save direct message to database...`);
+    await newMessage.save();
+    console.log(`💾 Direct message saved with ID: ${newMessage._id}`);
+  } catch (saveError) {
+    console.error(`💾 Failed to save direct message:`, saveError);
+    throw saveError;
+  }
   
   // Prepare populated message for socket
   const populatedMessage = {
@@ -252,6 +284,15 @@ const sendGroupMessage = async (scheduledMessage) => {
     throw new Error(`Group ${scheduledMessage.groupId} not found`);
   }
   
+  // Verify sender is still a member of the group
+  const isMember = group.members.some(
+    memberId => memberId.toString() === scheduledMessage.senderId.toString()
+  );
+  
+  if (!isMember) {
+    throw new Error(`Sender ${scheduledMessage.senderId} is no longer a member of group ${scheduledMessage.groupId}`);
+  }
+  
   // Create a new group message
   const newGroupMessage = new GroupMessage({
     senderId: scheduledMessage.senderId,
@@ -263,8 +304,15 @@ const sendGroupMessage = async (scheduledMessage) => {
     readBy: [scheduledMessage.senderId], // Mark as read by sender
   });
   
-  await newGroupMessage.save();
-  console.log(`💾 Group message saved with ID: ${newGroupMessage._id}`);
+  // Save with detailed error logging
+  try {
+    console.log(`💾 Attempting to save group message to database...`);
+    await newGroupMessage.save();
+    console.log(`💾 Group message saved with ID: ${newGroupMessage._id}`);
+  } catch (saveError) {
+    console.error(`💾 Failed to save group message:`, saveError);
+    throw saveError;
+  }
   
   // Prepare populated message for socket
   const populatedMessage = {
