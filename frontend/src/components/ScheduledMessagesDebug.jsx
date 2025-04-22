@@ -1,7 +1,7 @@
 // frontend/src/components/ScheduledMessagesDebug.jsx
 import { useState } from 'react';
 import { axiosInstance } from '../lib/axios';
-import { RefreshCw, Play, ListChecks } from 'lucide-react';
+import { RefreshCw, Play, ListChecks, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ScheduledMessagesDebug = () => {

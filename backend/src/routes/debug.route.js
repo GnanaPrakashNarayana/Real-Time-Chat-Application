@@ -72,12 +72,12 @@ router.post("/process-scheduled-message/:id", protectRoute, async (req, res) => 
 });
 
 // backend/src/routes/debug.route.js  (add at bottom)
-router.get('/scheduled-pending', protectRoute, async (_req, res) => {
+/* router.get('/scheduled-pending', protectRoute, async (_req, res) => {
     const pending = await ScheduledMessage.find({ status: 'scheduled' })
       .select('-__v')
       .sort({ scheduledFor: 1 });
     res.json(pending);
-  });
+  }); */ // ← Remove this duplicate definition
 
 // Endpoint to view all pending scheduled messages
 router.get("/scheduled-pending", protectRoute, async (req, res) => {
