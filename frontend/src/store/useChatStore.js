@@ -419,7 +419,14 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedUser: (selectedUser) => {
+    // Clear smart replies immediately when changing user
+    set({ 
+      selectedUser,
+      smartReplies: [], 
+      isLoadingSmartReplies: false 
+    });
+  },
   
   // Smart Reply functions
   getSmartReplies: async (message) => {

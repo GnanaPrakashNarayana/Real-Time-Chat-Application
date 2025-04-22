@@ -46,8 +46,13 @@ const ChatContainer = () => {
     // Mark messages as read when chat is opened
     markMessagesAsRead();
     
+    // Clear any existing smart replies to prevent state issues
+    if (typeof clearSmartReplies === 'function') {
+      clearSmartReplies();
+    }
+    
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead]);
+  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages, markMessagesAsRead, clearSmartReplies]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
@@ -147,30 +152,31 @@ const ChatContainer = () => {
 
   const isTyping = typingUsers[selectedUser._id];
 
-  useEffect(() => {
-    // Only try to get smart replies if there are messages and the last one is from the other person
-    if (!messages || !Array.isArray(messages) || messages.length === 0) return;
-    
-    try {
-      const lastMessage = messages[messages.length - 1];
-      // Check if last message is from the other person and has text
-      if (
-        lastMessage && 
-        lastMessage.text && 
-        typeof lastMessage.text === 'string' &&
-        (typeof lastMessage.senderId === 'object' 
-          ? lastMessage.senderId?._id !== authUser?._id 
-          : lastMessage.senderId !== authUser?._id)
-      ) {
-        // Get smart replies for the last message
-        if (typeof getSmartReplies === 'function') {
-          getSmartReplies(lastMessage.text);
-        }
-      }
-    } catch (error) {
-      console.error("Error handling smart replies:", error);
-    }
-  }, [messages, authUser?._id, getSmartReplies]);
+  // Disable smart replies generation temporarily
+  // useEffect(() => {
+  //   // Only try to get smart replies if there are messages and the last one is from the other person
+  //   if (!messages || !Array.isArray(messages) || messages.length === 0) return;
+  //   
+  //   try {
+  //     const lastMessage = messages[messages.length - 1];
+  //     // Check if last message is from the other person and has text
+  //     if (
+  //       lastMessage && 
+  //       lastMessage.text && 
+  //       typeof lastMessage.text === 'string' &&
+  //       (typeof lastMessage.senderId === 'object' 
+  //         ? lastMessage.senderId?._id !== authUser?._id 
+  //         : lastMessage.senderId !== authUser?._id)
+  //     ) {
+  //       // Get smart replies for the last message
+  //       if (typeof getSmartReplies === 'function') {
+  //         getSmartReplies(lastMessage.text);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error handling smart replies:", error);
+  //   }
+  // }, [messages, authUser?._id, getSmartReplies]);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -306,14 +312,14 @@ const ChatContainer = () => {
         <div ref={messageEndRef} />
       </div>
 
-      {/* Add Smart Reply suggestions */}
-      {Array.isArray(smartReplies) && smartReplies.length > 0 && (
+      {/* Temporarily disable Smart Reply suggestions */}
+      {/* {Array.isArray(smartReplies) && smartReplies.length > 0 && (
         <SmartReplySuggestions 
           suggestions={smartReplies} 
           onSendReply={handleSendSmartReply}
           isLoading={isLoadingSmartReplies}
         />
-      )}
+      )} */}
 
       <MessageInput />
       

@@ -365,7 +365,13 @@ export const useGroupStore = create((set, get) => ({
   
   // Set selected group
   setSelectedGroup: (group) => {
-    set({ selectedGroup: group });
+    // Clear smart replies immediately when changing groups
+    set({ 
+      selectedGroup: group,
+      smartReplies: [],
+      isLoadingSmartReplies: false
+    });
+    
     if (group) {
       get().getGroupMessages(group._id);
     }
