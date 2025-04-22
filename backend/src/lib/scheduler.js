@@ -223,15 +223,17 @@ const sendDirectMessage = async (scheduledMessage) => {
     throw new Error(`Receiver ${scheduledMessage.receiverId} not found`);
   }
   
-  // Create a new direct message
-  const newMessage = new Message({
+  // Create a new direct message object conditionally
+  const messagePayload = {
     senderId: scheduledMessage.senderId,
     receiverId: scheduledMessage.receiverId,
-    text: scheduledMessage.text,
-    image: scheduledMessage.image,
-    document: scheduledMessage.document,
-    voiceMessage: scheduledMessage.voiceMessage,
-  });
+    ...(scheduledMessage.text && { text: scheduledMessage.text }),
+    ...(scheduledMessage.image && { image: scheduledMessage.image }),
+    ...(scheduledMessage.document && { document: scheduledMessage.document }),
+    ...(scheduledMessage.voiceMessage && { voiceMessage: scheduledMessage.voiceMessage }),
+  };
+  
+  const newMessage = new Message(messagePayload);
   
   // Save with detailed error logging
   try {
@@ -303,20 +305,22 @@ const sendGroupMessage = async (scheduledMessage) => {
     throw new Error(`Sender ${scheduledMessage.senderId} is no longer a member of group ${scheduledMessage.groupId}`);
   }
   
-  // Create a new group message
-  const newGroupMessage = new GroupMessage({
+  // Create a new group message object conditionally
+  const messagePayload = {
     senderId: scheduledMessage.senderId,
     groupId: scheduledMessage.groupId,
-    text: scheduledMessage.text,
-    image: scheduledMessage.image,
-    document: scheduledMessage.document,
-    voiceMessage: scheduledMessage.voiceMessage,
     readBy: [scheduledMessage.senderId], // Mark as read by sender
-  });
+    ...(scheduledMessage.text && { text: scheduledMessage.text }),
+    ...(scheduledMessage.image && { image: scheduledMessage.image }),
+    ...(scheduledMessage.document && { document: scheduledMessage.document }),
+    ...(scheduledMessage.voiceMessage && { voiceMessage: scheduledMessage.voiceMessage }),
+  };
+
+  const newGroupMessage = new GroupMessage(messagePayload);
   
   // Save with detailed error logging
   try {
-    console.log(`💾 Attempting to save group message to database...`);
+    console.log(`�� Attempting to save group message to database...`);
     await newGroupMessage.save();
     console.log(`💾 Group message saved with ID: ${newGroupMessage._id}`);
   } catch (saveError) {
