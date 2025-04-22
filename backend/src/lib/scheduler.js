@@ -170,7 +170,7 @@ const processScheduledMessages = async (isManualRun = false) => {
 };
 
 const sendScheduledMessage = async (scheduledMessage) => {
-  console.log(`🚀 Processing scheduled message: ${scheduledMessage._id} (scheduled for ${scheduledMessage.scheduledFor.toISOString()})`);
+  console.log(`🚀 Processing scheduled message: ${scheduledMessage._id} (scheduled for ${scheduledMessage.scheduledFor.getTime()})`);
   
   // Validate message content
   if (!scheduledMessage.text && !scheduledMessage.image && 

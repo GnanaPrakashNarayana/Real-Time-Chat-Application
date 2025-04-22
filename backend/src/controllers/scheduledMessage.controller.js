@@ -10,7 +10,7 @@ export const createScheduledMessage = async (req, res) => {
     const senderId = req.user._id;
     
     // Validate the scheduled time
-    const scheduledTime = new Date(scheduledFor);
+    const scheduledTime = new Date(Number(scheduledFor));
     const now = new Date();
     
     if (scheduledTime <= now) {
