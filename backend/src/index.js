@@ -18,6 +18,7 @@ import pollRoutes from "./routes/poll.route.js";
 import helperRoutes from "./routes/helper.route.js";
 import { app, server } from "./lib/socket.js";
 import initScheduler from "./lib/scheduler.js";
+import debugRoutes from "./routes/debug.route.js";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -81,6 +82,7 @@ app.use("/api/scheduled-messages", scheduledMessageRoutes);
 app.use("/api/bookmarks", bookmarkRoutes);
 app.use("/api/polls", pollRoutes);
 app.use("/api/helper", helperRoutes);
+app.use("/api/debug", debugRoutes);
 
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
@@ -152,6 +154,22 @@ if (process.env.NODE_ENV === "production") {
 server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);
   connectDB();
+
+server.listen(PORT, async () => {
+  console.log("server is running on PORT:" + PORT);
+  await connectDB();
+  
+  // Initialize the scheduler with a small delay to ensure DB connection is ready
+  setTimeout(() => {
+    try {
+      console.log("Initializing scheduler...");
+      const scheduler = initScheduler();
+      console.log("Scheduler initialized successfully:", scheduler ? "✅" : "❌");
+    } catch (error) {
+      console.error("Failed to initialize scheduler:", error);
+    }
+  }, 2000);
+});
   
   // Initialize the scheduler
   initScheduler();

@@ -1,8 +1,9 @@
-// frontend/src/pages/ScheduledMessagesPage.jsx
+// frontend/src/pages/ScheduledMessagesPage.jsx (UPDATED VERSION)
 import { useEffect, useState } from 'react';
 import { useScheduledMessageStore } from '../store/useScheduledMessageStore';
 import { Clock, Loader2, Trash, MessageSquare, Users, Calendar, Edit, Send } from 'lucide-react';
-import { formatDateRelative } from '../lib/utils'; // We'll add this function
+import { formatDateRelative } from '../lib/utils';
+import ScheduledMessagesDebug from '../components/ScheduledMessagesDebug';
 
 const ScheduledMessagesPage = () => {
   const { 
@@ -16,9 +17,17 @@ const ScheduledMessagesPage = () => {
   
   const [editingMessage, setEditingMessage] = useState(null);
   const [editText, setEditText] = useState('');
+  const [showDebugTools, setShowDebugTools] = useState(false);
   
   useEffect(() => {
     getScheduledMessages();
+    
+    // Add a global function to allow refreshing from debug component
+    window.refreshScheduledMessages = getScheduledMessages;
+    
+    return () => {
+      delete window.refreshScheduledMessages;
+    };
   }, [getScheduledMessages]);
 
   // Format a date for display
@@ -63,10 +72,24 @@ const ScheduledMessagesPage = () => {
     <div className="h-screen bg-base-200 pt-20">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="bg-base-100 rounded-lg shadow-lg">
-          <div className="p-4 border-b border-base-300 flex items-center gap-3">
-            <Clock className="size-6 text-primary" />
-            <h1 className="text-xl font-bold">Scheduled Messages</h1>
+          <div className="p-4 border-b border-base-300 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="size-6 text-primary" />
+              <h1 className="text-xl font-bold">Scheduled Messages</h1>
+            </div>
+            <button 
+              className="btn btn-sm btn-ghost"
+              onClick={() => setShowDebugTools(!showDebugTools)}
+            >
+              {showDebugTools ? "Hide Debug Tools" : "Debug Tools"}
+            </button>
           </div>
+          
+          {showDebugTools && (
+            <div className="p-4 border-b border-base-300">
+              <ScheduledMessagesDebug />
+            </div>
+          )}
           
           <div className="p-4">
             {isLoading ? (
@@ -105,6 +128,9 @@ const ScheduledMessagesPage = () => {
                           <div className="flex items-center gap-1 text-xs text-base-content/60">
                             <Calendar className="size-3" />
                             <span>{formatScheduleDate(message.scheduledFor)}</span>
+                            <span className="badge badge-sm">
+                              {new Date(message.scheduledFor) > new Date() ? "Pending" : "Processing..."}
+                            </span>
                           </div>
                         </div>
                       </div>

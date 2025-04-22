@@ -1,4 +1,4 @@
-// backend/src/lib/scheduler.js
+// backend/src/lib/scheduler.js (UPDATED VERSION)
 import ScheduledMessage from "../models/scheduledMessage.model.js";
 import Message from "../models/message.model.js";
 import GroupMessage from "../models/groupMessage.model.js";
@@ -7,33 +7,88 @@ import User from "../models/user.model.js";
 import { io, getReceiverSocketId } from "./socket.js";
 import cron from "node-cron";
 
+// Keep track of scheduler state for debugging
+let lastRun = null;
+let isCurrentlyRunning = false;
+let schedulerStats = {
+  totalRuns: 0,
+  successfulRuns: 0,
+  failedRuns: 0,
+  messagesProcessed: 0,
+  messagesFailed: 0,
+  lastErrorMessage: null,
+  lastErrorTimestamp: null
+};
+
 // Check for scheduled messages every minute
 const initScheduler = () => {
   console.log("🕒 Starting message scheduler...");
   
   // Run every minute
-  cron.schedule("* * * * *", async () => {
-    await processScheduledMessages();
+  const job = cron.schedule("* * * * *", async () => {
+    await runSchedulerTask();
   });
   
-  // Also process any pending messages immediately on startup
+  // Make sure the job is running
+  if (!job.running) {
+    console.error("⚠️ Scheduler job is not running!");
+    job.start();
+  }
+  
+  // Also process any pending messages immediately on startup - with a delay to ensure DB connection is established
   setTimeout(async () => {
     console.log("🔄 Processing any pending scheduled messages on startup...");
-    await processScheduledMessages();
+    await runSchedulerTask(true);
   }, 5000); // Wait 5 seconds after server start
+
+  // Export a function to manually trigger the scheduler (useful for testing)
+  global.triggerScheduler = async () => {
+    console.log("🔔 Manually triggering scheduler...");
+    await runSchedulerTask(true);
+    return schedulerStats;
+  };
+  
+  return job; // Return the job for potential management later
+};
+
+// Wrapper function to handle scheduler execution with error handling and stats
+const runSchedulerTask = async (isManualRun = false) => {
+  // Prevent concurrent runs
+  if (isCurrentlyRunning) {
+    console.log("⏳ Scheduler already running, skipping this run");
+    return;
+  }
+  
+  isCurrentlyRunning = true;
+  lastRun = new Date();
+  schedulerStats.totalRuns++;
+  
+  try {
+    await processScheduledMessages(isManualRun);
+    schedulerStats.successfulRuns++;
+  } catch (error) {
+    schedulerStats.failedRuns++;
+    schedulerStats.lastErrorMessage = error.message;
+    schedulerStats.lastErrorTimestamp = new Date();
+    console.error("❌ Error in scheduler task:", error);
+  } finally {
+    isCurrentlyRunning = false;
+  }
 };
 
 // Main function to process all scheduled messages
-const processScheduledMessages = async () => {
+const processScheduledMessages = async (isManualRun = false) => {
   try {
     const now = new Date();
-    console.log(`⏰ Checking for scheduled messages at ${now.toISOString()}`);
+    console.log(`⏰ Checking for scheduled messages at ${now.toISOString()}${isManualRun ? ' (MANUAL RUN)' : ''}`);
     
-    // Find scheduled messages due to be sent
+    // Find scheduled messages due to be sent - with a safety margin to account for slight delays
+    const cutoffTime = new Date(now.getTime() + 60000); // Add 1 minute buffer
+    
     const messagesToSend = await ScheduledMessage.find({
       scheduledFor: { $lte: now },
       status: "scheduled"
-    });
+    }).sort({ scheduledFor: 1 }); // Process oldest first
     
     if (messagesToSend.length > 0) {
       console.log(`📨 Found ${messagesToSend.length} scheduled messages to send`);
@@ -42,8 +97,11 @@ const processScheduledMessages = async () => {
       for (const scheduledMessage of messagesToSend) {
         try {
           await sendScheduledMessage(scheduledMessage);
+          schedulerStats.messagesProcessed++;
         } catch (error) {
+          schedulerStats.messagesFailed++;
           console.error(`❌ Error sending scheduled message ${scheduledMessage._id}:`, error);
+          
           // Mark as failed but continue with other messages
           scheduledMessage.status = "failed";
           await scheduledMessage.save();
@@ -51,14 +109,27 @@ const processScheduledMessages = async () => {
       }
     } else {
       console.log("👍 No pending scheduled messages found");
+      
+      // Double-check by looking for any messages that might have been missed
+      if (isManualRun) {
+        const missedMessages = await ScheduledMessage.find({
+          scheduledFor: { $lte: new Date(now.getTime() - 60000) }, // Any message scheduled for more than 1 minute ago
+          status: "scheduled"
+        }).count();
+        
+        if (missedMessages > 0) {
+          console.warn(`⚠️ Found ${missedMessages} potentially missed messages from earlier - will retry`);
+        }
+      }
     }
   } catch (error) {
     console.error("❌ Error in scheduler:", error);
+    throw error; // Re-throw for the caller to handle
   }
 };
 
 const sendScheduledMessage = async (scheduledMessage) => {
-  console.log(`🚀 Processing scheduled message: ${scheduledMessage._id}`);
+  console.log(`🚀 Processing scheduled message: ${scheduledMessage._id} (scheduled for ${scheduledMessage.scheduledFor.toISOString()})`);
   
   try {
     // Check if it's a direct message or group message
@@ -69,6 +140,11 @@ const sendScheduledMessage = async (scheduledMessage) => {
     } else {
       throw new Error("Invalid message: no receiverId or groupId");
     }
+    
+    // Update scheduled message status
+    scheduledMessage.status = "sent";
+    scheduledMessage.sentAt = new Date();
+    await scheduledMessage.save();
     
     console.log(`✅ Successfully sent scheduled message ${scheduledMessage._id}`);
     
@@ -110,11 +186,6 @@ const sendDirectMessage = async (scheduledMessage) => {
   await newMessage.save();
   console.log(`💾 Direct message saved with ID: ${newMessage._id}`);
   
-  // Update scheduled message status
-  scheduledMessage.status = "sent";
-  scheduledMessage.sentAt = new Date();
-  await scheduledMessage.save();
-  
   // Prepare populated message for socket
   const populatedMessage = {
     ...newMessage.toObject(),
@@ -129,7 +200,13 @@ const sendDirectMessage = async (scheduledMessage) => {
   const receiverSocketId = getReceiverSocketId(scheduledMessage.receiverId);
   if (receiverSocketId) {
     console.log(`📡 Emitting socket event to ${receiverSocketId}`);
-    io.to(receiverSocketId).emit("newMessage", populatedMessage);
+    try {
+      io.to(receiverSocketId).emit("newMessage", populatedMessage);
+      console.log(`📡 Socket event sent successfully`);
+    } catch (socketError) {
+      console.error(`⚠️ Socket emission error:`, socketError);
+      // Continue execution - don't throw - socket delivery is not critical
+    }
   } else {
     console.log(`📝 Receiver not online, message will be delivered on next connection`);
   }
@@ -164,11 +241,6 @@ const sendGroupMessage = async (scheduledMessage) => {
   await newGroupMessage.save();
   console.log(`💾 Group message saved with ID: ${newGroupMessage._id}`);
   
-  // Update scheduled message status
-  scheduledMessage.status = "sent";
-  scheduledMessage.sentAt = new Date();
-  await scheduledMessage.save();
-  
   // Prepare populated message for socket
   const populatedMessage = {
     ...newGroupMessage.toObject(),
@@ -182,26 +254,40 @@ const sendGroupMessage = async (scheduledMessage) => {
   // Notify group members
   let notificationsSent = 0;
   if (group.members && group.members.length > 0) {
-    group.members.forEach((memberId) => {
+    for (const memberId of group.members) {
       if (memberId.toString() !== scheduledMessage.senderId.toString()) {
         const socketId = getReceiverSocketId(memberId);
         if (socketId) {
-          console.log(`📡 Emitting socket event to group member: ${memberId}`);
-          io.to(socketId).emit("newGroupMessage", {
-            message: populatedMessage,
-            group: {
-              _id: group._id,
-              name: group.name,
-              groupPic: group.groupPic
-            }
-          });
-          notificationsSent++;
+          try {
+            console.log(`📡 Emitting socket event to group member: ${memberId}`);
+            io.to(socketId).emit("newGroupMessage", {
+              message: populatedMessage,
+              group: {
+                _id: group._id,
+                name: group.name,
+                groupPic: group.groupPic
+              }
+            });
+            notificationsSent++;
+          } catch (socketError) {
+            console.error(`⚠️ Socket emission error for member ${memberId}:`, socketError);
+            // Continue with other members - don't throw
+          }
         }
       }
-    });
+    }
   }
   
   console.log(`📊 Notified ${notificationsSent} online group members`);
+};
+
+// Export a method to get scheduler status - useful for debugging
+export const getSchedulerStatus = () => {
+  return {
+    lastRun,
+    isCurrentlyRunning,
+    stats: schedulerStats
+  };
 };
 
 export default initScheduler;
