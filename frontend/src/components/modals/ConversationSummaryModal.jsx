@@ -157,7 +157,7 @@ const ConversationSummaryModal = ({ isOpen, onClose, messages, otherUser, isLoad
           )}
         </div>
         
-        // frontend/src/components/modals/ConversationSummaryModal.jsx (Continued)
+        
 
         <div className="p-4 border-t border-base-300 flex justify-between">
           <button 
