@@ -14,6 +14,7 @@ import BookmarkButton from "./BookmarkButton";
 import ConversationSummaryModal from "./modals/ConversationSummaryModal";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
+import SmartReplySuggestions from "./SmartReplySuggestions";
 
 const ChatContainer = () => {
   const {
@@ -261,6 +262,14 @@ const ChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
+      <SmartReplySuggestions 
+        suggestions={useChatStore().smartReplies}
+        onSendReply={(text) => {
+          useChatStore().sendMessage({ text });
+          useChatStore().clearSmartReplies();
+        }}
+        isLoading={useChatStore().isLoadingSmartReplies}
+      />
 
       <MessageInput />
       

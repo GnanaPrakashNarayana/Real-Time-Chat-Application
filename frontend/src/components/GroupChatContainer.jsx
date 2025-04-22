@@ -12,6 +12,7 @@ import { FileText, Download, BarChart2 } from "lucide-react";
 import BookmarkButton from "./BookmarkButton";
 import PollDisplay from "./polls/PollDisplay";
 import ConversationSummaryModal from "./modals/ConversationSummaryModal";
+import SmartReplySuggestions from "./SmartReplySuggestions";
 
 const GroupChatContainer = () => {
   const {
@@ -194,6 +195,14 @@ const GroupChatContainer = () => {
         
         <div ref={messageEndRef} />
       </div>
+      <SmartReplySuggestions 
+        suggestions={useGroupStore().smartReplies}
+        onSendReply={(text) => {
+          useGroupStore().sendGroupMessage({ text });
+          useGroupStore().clearSmartReplies();
+        }}
+        isLoading={useGroupStore().isLoadingSmartReplies}
+      />
 
       <GroupMessageInput />
       
