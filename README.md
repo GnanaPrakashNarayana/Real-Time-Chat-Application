@@ -2,7 +2,6 @@
 
 Chatterpillar is a full-featured, real-time chat application built with modern web technologies. It supports direct messaging, group chats, media sharing, and advanced features like message scheduling, bookmarks, and polls.
 
-![Chatterpillar Logo](https://via.placeholder.com/800x400?text=Chatterpillar+Chat+App)
 
 ## Features
 
